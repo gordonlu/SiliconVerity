@@ -21,6 +21,7 @@ class SustainedRunner(
         val windowThroughputs = mutableListOf<Double>()
         val samples = mutableListOf<SustainedSample>()
         var nextWindowEnd = windowSec.toDouble()
+        var totalWorkUnits = 0L
 
         while (true) {
             val elapsed = (clockNanos() - start) / 1_000_000_000.0
@@ -28,6 +29,7 @@ class SustainedRunner(
             coroutineContext.ensureActive()
 
             val sample = workload.runOnce()
+            totalWorkUnits += sample.workUnits
             val elapsedAfter = (clockNanos() - start) / 1_000_000_000.0
             windowThroughputs += sample.throughput
 
@@ -70,6 +72,11 @@ class SustainedRunner(
         val stableMedian = Statistics.median(tail)
         val retention = if (initialMedian > 0) stableMedian / initialMedian else 0.0
 
+        val durationD = durationSec.toDouble()
+        val t90 = if (initialMedian > 0) samples.firstOrNull { it.throughput < 0.9 * initialMedian }?.elapsedSec ?: durationD else durationD
+        val t80 = if (initialMedian > 0) samples.firstOrNull { it.throughput < 0.8 * initialMedian }?.elapsedSec ?: durationD else durationD
+        val worstWindow = if (samples.isEmpty()) 0.0 else samples.minOf { it.throughput }
+
         SustainedResult(
             runId = env.runId(),
             workloadId = workload.spec.workloadId,
@@ -85,6 +92,10 @@ class SustainedRunner(
             initialMedian = initialMedian,
             stableMedian = stableMedian,
             retention = retention,
+            timeTo90Percent = t90,
+            timeTo80Percent = t80,
+            worstStableWindow = worstWindow,
+            absoluteWorkCompleted = totalWorkUnits,
             thermalStatusStart = thermalStart,
             thermalStatusEnd = env.thermalStatusEnd(),
             batteryLevel = env.batteryLevel,

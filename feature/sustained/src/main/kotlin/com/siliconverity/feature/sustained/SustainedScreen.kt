@@ -133,6 +133,9 @@ fun SustainedScreen(
                     item {
                         Text("initial  %.2f M ops/s".format(r.initialMedian / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
                         Text("stable   %.2f M ops/s".format(r.stableMedian / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                        Text("worst    %.2f M ops/s".format(r.worstStableWindow / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                        Text("t90 %.0fs  t80 %.0fs".format(r.timeTo90Percent, r.timeTo80Percent), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("total work %,d".format(r.absoluteWorkCompleted), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("duration ${r.durationSec}s, workload ${r.workloadId}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("thermal ${r.thermalStatusStart} -> ${r.thermalStatusEnd}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         state.savedPath?.let { Text("saved: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
