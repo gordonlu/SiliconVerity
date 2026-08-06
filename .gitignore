@@ -105,3 +105,8 @@ Thumbs.db
 *.swo
 *~
 .vscode/
+
+# Product docs (local only)
+.svdoc/
+
+.svdoc/
