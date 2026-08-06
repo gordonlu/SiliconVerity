@@ -1,8 +1,8 @@
 package com.siliconverity.core.benchmark
 
 enum class ValidityLevel {
-    CLEAN,
-    ACCEPTABLE,
-    NOISY,
+    STABLE,
+    VARIABLE,
+    RETEST_RECOMMENDED,
     INVALID,
 }

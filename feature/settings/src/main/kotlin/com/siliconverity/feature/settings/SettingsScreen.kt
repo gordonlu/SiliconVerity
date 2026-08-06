@@ -70,7 +70,7 @@ fun SettingsScreen() {
         }
         item {
             Text(
-                "每项测试 7 轮测量, 取 median, 辅以 MAD/CV。CV ≤ 3% 为 CLEAN, > 7% 标 NOISY。",
+                "每项测试 7 轮测量, 取 median, 辅以 MAD/CV。CV ≤ 3% 为 STABLE, > 7% 标 RETEST_RECOMMENDED。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

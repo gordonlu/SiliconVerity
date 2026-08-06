@@ -22,7 +22,7 @@ class BenchmarkEngine(
         fun runId(): String
     }
 
-    fun execute(workload: Workload, validityCvThreshold: Double = 0.07): RunManifest {
+    fun execute(workload: Workload, protocol: BenchmarkProtocol = DefaultBenchmarkProtocol): RunManifest {
         val spec = workload.spec
         workload.warmUp()
         val warmupSamples = mutableListOf<Sample>()
@@ -47,7 +47,7 @@ class BenchmarkEngine(
         }
 
         val measurementSamples = mutableListOf<Sample>()
-        repeat(spec.measurementRepetitions) { idx ->
+        repeat(protocol.measurementRecommendedSamples) { idx ->
             val s = workload.runOnce()
             measurementSamples.add(s.copy(index = idx))
         }
@@ -59,18 +59,20 @@ class BenchmarkEngine(
         val validity = when {
             !correctnessOk -> ValidityLevel.INVALID
             cv.isNaN() -> ValidityLevel.INVALID
-            cv <= 0.03 -> ValidityLevel.CLEAN
-            cv <= validityCvThreshold -> ValidityLevel.ACCEPTABLE
-            else -> ValidityLevel.NOISY
+            cv <= protocol.stableCvThreshold -> ValidityLevel.STABLE
+            cv <= protocol.variableCvThreshold -> ValidityLevel.VARIABLE
+            else -> ValidityLevel.RETEST_RECOMMENDED
         }
 
         val warnings = mutableListOf<String>()
         if (!stable) warnings += "warmup did not converge within max time"
         if (cv.isNaN()) warnings += "cv unavailable (zero median)"
-        if (cv > validityCvThreshold) warnings += "cv %.4f exceeds threshold %.4f".format(cv, validityCvThreshold)
+        if (cv > protocol.variableCvThreshold) warnings += "cv %.4f exceeds threshold %.4f".format(cv, protocol.variableCvThreshold)
 
         return RunManifest(
             runId = environment.runId(),
+            sessionId = "",
+            benchmarkProtocolVersion = protocol.protocolVersion,
             appVersion = environment.appVersion,
             benchmarkEngineVersion = environment.engineVersion,
             workloadId = spec.workloadId,
@@ -92,6 +94,10 @@ class BenchmarkEngine(
             median = summary.median,
             mad = summary.mad,
             cv = summary.cv,
+            minimum = summary.minimum,
+            maximum = summary.maximum,
+            trendSlope = summary.trendSlope,
+            outlierCount = summary.outlierCount,
             correctnessStatus = correctnessOk,
             validityLevel = validity,
             warnings = warnings,

@@ -132,9 +132,9 @@ private fun RunRow(manifest: RunManifest, onOpenRun: (String) -> Unit) {
 @Composable
 private fun ValidityChip(level: ValidityLevel) {
     val color = when (level) {
-        ValidityLevel.CLEAN -> MaterialTheme.colorScheme.primary
-        ValidityLevel.ACCEPTABLE -> MaterialTheme.colorScheme.tertiary
-        ValidityLevel.NOISY -> MaterialTheme.colorScheme.error
+        ValidityLevel.STABLE -> MaterialTheme.colorScheme.primary
+        ValidityLevel.VARIABLE -> MaterialTheme.colorScheme.tertiary
+        ValidityLevel.RETEST_RECOMMENDED -> MaterialTheme.colorScheme.error
         ValidityLevel.INVALID -> MaterialTheme.colorScheme.error
     }
     Text(

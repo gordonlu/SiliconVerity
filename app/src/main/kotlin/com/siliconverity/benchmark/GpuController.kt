@@ -80,7 +80,7 @@ class GpuController(application: Application) : AndroidViewModel(application) {
             mad = 0.0,
             cv = r.coefficientOfVariation ?: 0.0,
             correctnessStatus = r.checksumValid,
-            validityLevel = if (valid) ValidityLevel.CLEAN else ValidityLevel.INVALID,
+            validityLevel = if (valid) ValidityLevel.STABLE else ValidityLevel.INVALID,
             warnings = if (!valid) listOfNotNull(r.invalidReason) else emptyList(),
         )
     }

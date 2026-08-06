@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class RunManifest(
     val runId: String,
     val sessionId: String = "",
+    val benchmarkProtocolVersion: String = "",
     val appVersion: String,
     val benchmarkEngineVersion: String,
     val workloadId: String,
@@ -27,6 +28,10 @@ data class RunManifest(
     val median: Double,
     val mad: Double,
     val cv: Double,
+    val minimum: Double = 0.0,
+    val maximum: Double = 0.0,
+    val trendSlope: Double = 0.0,
+    val outlierCount: Int = 0,
     val correctnessStatus: Boolean,
     val validityLevel: ValidityLevel,
     val warnings: List<String> = emptyList(),

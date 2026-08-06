@@ -58,4 +58,25 @@ class StatisticsTest {
         assertEquals(0, s.count)
         assertEquals(0.0, s.median, 1e-9)
     }
+
+    @Test
+    fun trendSlope_constant_is_zero() {
+        assertEquals(0.0, Statistics.trendSlope(listOf(100.0, 100.0, 100.0, 100.0)), 1e-9)
+    }
+
+    @Test
+    fun trendSlope_increasing_is_positive() {
+        assertTrue(Statistics.trendSlope(listOf(1.0, 2.0, 3.0, 4.0)) > 0.0)
+    }
+
+    @Test
+    fun outlierCount_stable_is_zero() {
+        assertEquals(0, Statistics.outlierCount(listOf(100.0, 100.0, 100.0, 100.0)))
+    }
+
+    @Test
+    fun outlierCount_detects_outlier() {
+        // median 3, MAD small; 1000 is a clear outlier
+        assertEquals(1, Statistics.outlierCount(listOf(1.0, 2.0, 3.0, 4.0, 1000.0)))
+    }
 }
