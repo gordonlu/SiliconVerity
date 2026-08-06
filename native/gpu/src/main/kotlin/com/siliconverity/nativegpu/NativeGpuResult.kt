@@ -10,6 +10,13 @@ data class NativeGpuResult(
     val medianNs: Long?,
     val coefficientOfVariation: Double?,
     val checksumValid: Boolean,
+    val commandRecordingNs: Long?,
+    val queueSubmitNs: Long?,
+    val gpuExecNs: Long?,
+    val completionWaitNs: Long?,
+    val spirvHash: String?,
+    val arithType: String?,
+    val arithContract: String?,
     val invalidReason: String?,
 ) {
     companion object {
@@ -30,6 +37,13 @@ data class NativeGpuResult(
                 medianNs = g("medianNs")?.toLongOrNull(),
                 coefficientOfVariation = g("cv")?.toDoubleOrNull(),
                 checksumValid = g("checksumValid") == "1",
+                commandRecordingNs = g("commandRecordingNs")?.toLongOrNull(),
+                queueSubmitNs = g("queueSubmitNs")?.toLongOrNull(),
+                gpuExecNs = g("gpuExecNs")?.toLongOrNull(),
+                completionWaitNs = g("completionWaitNs")?.toLongOrNull(),
+                spirvHash = g("spirvHash"),
+                arithType = g("arithType"),
+                arithContract = g("arithContract"),
                 invalidReason = g("invalidReason"),
             )
         }

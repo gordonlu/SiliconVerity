@@ -1,0 +1,35 @@
+#version 450
+
+layout(local_size_x = 64) in;
+
+layout(set = 0, binding = 0) buffer IOBuffer {
+    float data[];
+};
+
+layout(push_constant) uniform Push {
+    uint iterations;
+    float factor;
+    float offset;
+    uint vec4Count;
+} pc;
+
+void main() {
+    uint base = gl_GlobalInvocationID.x;
+    if (base >= pc.vec4Count) return;
+    uint i = base * 4u;
+    vec4 a = vec4(data[i], data[i + 1u], data[i + 2u], data[i + 3u]);
+    vec4 b = a + vec4(1.0);
+    vec4 c = a + vec4(2.0);
+    vec4 d = a + vec4(3.0);
+    for (uint k = 0u; k < pc.iterations; ++k) {
+        a = a * pc.factor + pc.offset;
+        b = b * pc.factor + pc.offset;
+        c = c * pc.factor + pc.offset;
+        d = d * pc.factor + pc.offset;
+    }
+    vec4 sum = a + b + c + d;
+    data[i]     = sum.x;
+    data[i + 1u] = sum.y;
+    data[i + 2u] = sum.z;
+    data[i + 3u] = sum.w;
+}

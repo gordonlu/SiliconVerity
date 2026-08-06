@@ -42,11 +42,13 @@ function(compile_shader name)
 endfunction()
 
 compile_shader(fp32)
+compile_shader(fp32_independent)
 compile_shader(buffer_triad)
 
 add_library(sv_gpu SHARED
     vulkan_bench.cpp
     ${BIN}/fp32_spv.h
+    ${BIN}/fp32_independent_spv.h
     ${BIN}/buffer_triad_spv.h
 )
 

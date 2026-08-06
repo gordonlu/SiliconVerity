@@ -1,8 +1,9 @@
 package com.siliconverity.nativegpu
 
 enum class GpuWorkload(val id: Int) {
-    FP32_COMPUTE(0),
-    BUFFER_THROUGHPUT(1),
+    FP32_INDEPENDENT(0),
+    FP32_DEPENDENCY(1),
+    BUFFER_THROUGHPUT(2),
 }
 
 class VulkanBench {

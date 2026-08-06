@@ -3,7 +3,8 @@ package com.siliconverity.benchmark
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.siliconverity.core.benchmark.BenchmarkEngine
+import com.siliconverity.core.benchmark.ArithmeticContract
+import com.siliconverity.core.benchmark.ArithmeticType
 import com.siliconverity.core.benchmark.RunManifest
 import com.siliconverity.core.benchmark.ValidityLevel
 import com.siliconverity.core.storage.RunManifestStore
@@ -32,19 +33,23 @@ class GpuController(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.Default) {
             _state.value = GpuUiState.Running
             val sessionId = "gpu-" + UUID.randomUUID().toString()
-            val fp32Res = runCatching { bench.run(GpuWorkload.FP32_COMPUTE, 300) }
-            val triadRes = runCatching { bench.run(GpuWorkload.BUFFER_THROUGHPUT, 300) }
-            val fp32 = fp32Res.getOrNull()
-            val triad = triadRes.getOrNull()
+            val indep = runCatching { bench.run(GpuWorkload.FP32_INDEPENDENT, 300) }
+            val dep = runCatching { bench.run(GpuWorkload.FP32_DEPENDENCY, 300) }
+            val buf = runCatching { bench.run(GpuWorkload.BUFFER_THROUGHPUT, 300) }
             val now = env.nowIso()
-            if (fp32 != null) {
-                runCatching { store.save(toManifest(fp32, "vulkan.fp32.compute", "0.1.0-alpha", sessionId, now)) }
+            indep.getOrNull()?.let {
+                runCatching { store.save(toManifest(it, "vulkan.fp32.independent", "0.1.0-alpha", sessionId, now)) }
             }
-            if (triad != null) {
-                runCatching { store.save(toManifest(triad, "vulkan.buffer.throughput", "0.1.0-alpha", sessionId, now)) }
+            dep.getOrNull()?.let {
+                runCatching { store.save(toManifest(it, "vulkan.fp32.dependency", "0.1.0-alpha", sessionId, now)) }
             }
-            val err = fp32Res.exceptionOrNull()?.message ?: triadRes.exceptionOrNull()?.message
-            _state.value = GpuUiState.Done(fp32, triad, err)
+            buf.getOrNull()?.let {
+                runCatching { store.save(toManifest(it, "vulkan.buffer.throughput", "0.1.0-alpha", sessionId, now)) }
+            }
+            val err = indep.exceptionOrNull()?.message
+                ?: dep.exceptionOrNull()?.message
+                ?: buf.exceptionOrNull()?.message
+            _state.value = GpuUiState.Done(indep.getOrNull(), dep.getOrNull(), buf.getOrNull(), err)
         }
     }
 
@@ -58,10 +63,17 @@ class GpuController(application: Application) : AndroidViewModel(application) {
         return RunManifest(
             runId = "${sessionId}_$workloadId",
             sessionId = sessionId,
+            benchmarkProtocolVersion = "0.1.0",
             appVersion = env.appVersion,
             benchmarkEngineVersion = "vulkan-0.1.0-alpha",
             workloadId = workloadId,
             workloadVersion = version,
+            shaderSourceVersion = version,
+            spirvHash = r.spirvHash,
+            pipelineConfigVersion = "0.1.0-alpha",
+            scoreVersion = null,
+            arithmeticType = r.arithType?.let { parseArithType(it) },
+            arithmeticContract = r.arithContract?.let { parseArithContract(it) },
             startedAt = nowIso,
             abi = env.abi,
             androidVersion = env.androidVersion,
@@ -83,5 +95,20 @@ class GpuController(application: Application) : AndroidViewModel(application) {
             validityLevel = if (valid) ValidityLevel.STABLE else ValidityLevel.INVALID,
             warnings = if (!valid) listOfNotNull(r.invalidReason) else emptyList(),
         )
+    }
+
+    private fun parseArithType(s: String): ArithmeticType? = when (s) {
+        "FP32" -> ArithmeticType.FP32
+        "FP16" -> ArithmeticType.FP16
+        "INT8" -> ArithmeticType.INT8
+        else -> null
+    }
+
+    private fun parseArithContract(s: String): ArithmeticContract? = when (s) {
+        "DEVICE_DEFAULT" -> ArithmeticContract.DEVICE_DEFAULT
+        "NO_CONTRACTION" -> ArithmeticContract.NO_CONTRACTION
+        "DEVICE_FAST" -> ArithmeticContract.DEVICE_FAST
+        "STRICT_CONFORMANT" -> ArithmeticContract.STRICT_CONFORMANT
+        else -> null
     }
 }

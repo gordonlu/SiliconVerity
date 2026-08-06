@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -45,10 +46,10 @@ fun GpuScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("GPU COMPUTE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                androidx.compose.material3.TextButton(onClick = onBack) { Text("返回") }
+                TextButton(onClick = onBack) { Text("返回") }
             }
             Text(
-                "Vulkan Compute MiniBench (无图形管线)。不等于完整 GPU 图形性能。",
+                "Vulkan Compute MiniBench (无图形管线)。仅 Shader 吞吐与 Buffer 吞吐，不等于完整图形性能。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -71,14 +72,13 @@ fun GpuScreen(
                 Text("尚未运行", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             is GpuUiState.Running -> item {
-                Text("预热 3 轮 + 测量 7 轮 (FP32 + Buffer)…", style = MaterialTheme.typography.bodyMedium)
+                Text("FP32 Independent / Dependency / Buffer 各 3 预热 + 7 测量…", style = MaterialTheme.typography.bodyMedium)
             }
             is GpuUiState.Done -> {
-                state.error?.let {
-                    item { Text("出错: $it", color = MaterialTheme.colorScheme.error) }
-                }
-                item { ResultCard("FP32 SHADER THROUGHPUT", state.fp32) }
-                item { ResultCard("BUFFER THROUGHPUT", state.triad) }
+                state.error?.let { item { Text("出错: $it", color = MaterialTheme.colorScheme.error) } }
+                item { ResultCard("FP32 INDEPENDENT", state.independent) }
+                item { ResultCard("FP32 DEPENDENCY", state.dependency) }
+                item { ResultCard("BUFFER THROUGHPUT", state.buffer) }
             }
         }
     }
@@ -105,17 +105,32 @@ private fun ResultCard(title: String, r: NativeGpuResult?) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (!r.arithType.isNullOrEmpty()) {
+                Text(
+                    "arith ${r.arithType} / ${r.arithContract ?: "?"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Spacer(Modifier.height(SvSpacing.Sm))
             val mv = r.metricValue
             val unit = r.metricUnit ?: ""
             Text(
-                if (mv != null) "%.2f %s".format(mv, unit) else "—",
+                if (mv != null) "%.2f %s".format(mv, unit) else "-",
                 style = MaterialTheme.typography.headlineMedium,
                 fontFamily = FontFamily.Monospace,
             )
             Text(
-                "CV %.4f  •  median %,d ns".format(r.coefficientOfVariation ?: 0.0, r.medianNs ?: 0L),
+                "CV %.4f  •  GPU exec %,d ns".format(r.coefficientOfVariation ?: 0.0, r.gpuExecNs ?: 0L),
                 style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "submit diag  rec %,d / submit %,d / wait %,d ns".format(
+                    r.commandRecordingNs ?: 0L, r.queueSubmitNs ?: 0L, r.completionWaitNs ?: 0L,
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val checksumOk = r.checksumValid
@@ -124,6 +139,9 @@ private fun ResultCard(title: String, r: NativeGpuResult?) {
                 style = MaterialTheme.typography.labelSmall,
                 color = if (checksumOk) SvColors.Accent else MaterialTheme.colorScheme.error,
             )
+            r.spirvHash?.let {
+                Text("spirv $it", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             r.invalidReason?.takeIf { it.isNotEmpty() }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
