@@ -1,6 +1,7 @@
 package com.siliconverity.nativecpu
 
 import com.siliconverity.core.benchmark.BenchmarkSpec
+import com.siliconverity.core.benchmark.ChecksumKind
 import com.siliconverity.core.benchmark.Sample
 import com.siliconverity.core.benchmark.Workload
 import java.time.Instant
@@ -13,6 +14,8 @@ class Fp32FmaWorkload : Workload {
 
     private external fun nativeRunOnce(seed: Long): LongArray
     private external fun nativeCorrectnessCheck(): Boolean
+
+    override val checksumKind: ChecksumKind get() = ChecksumKind.ULP
 
     override val spec: BenchmarkSpec = BenchmarkSpec(
         workloadId = "cpu.fp32.fma",

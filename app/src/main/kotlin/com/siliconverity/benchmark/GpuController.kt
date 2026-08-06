@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.siliconverity.core.benchmark.ArithmeticContract
 import com.siliconverity.core.benchmark.ArithmeticType
+import com.siliconverity.core.benchmark.ChecksumKind
 import com.siliconverity.core.benchmark.RunManifest
 import com.siliconverity.core.benchmark.ValidityLevel
 import com.siliconverity.core.storage.RunManifestStore
@@ -12,7 +13,10 @@ import com.siliconverity.feature.gpu.GpuUiState
 import com.siliconverity.nativegpu.GpuWorkload
 import com.siliconverity.nativegpu.NativeGpuResult
 import com.siliconverity.nativegpu.VulkanBench
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,28 +33,43 @@ class GpuController(application: Application) : AndroidViewModel(application) {
     private val _state = MutableStateFlow<GpuUiState>(GpuUiState.Idle)
     val state: StateFlow<GpuUiState> = _state.asStateFlow()
 
+    private var job: Job? = null
+
     fun run() {
-        viewModelScope.launch(Dispatchers.Default) {
+        job?.cancel()
+        job = viewModelScope.launch(Dispatchers.Default) {
             _state.value = GpuUiState.Running
             val sessionId = "gpu-" + UUID.randomUUID().toString()
-            val indep = runCatching { bench.run(GpuWorkload.FP32_INDEPENDENT, 300) }
-            val dep = runCatching { bench.run(GpuWorkload.FP32_DEPENDENCY, 300) }
-            val buf = runCatching { bench.run(GpuWorkload.BUFFER_THROUGHPUT, 300) }
             val now = env.nowIso()
-            indep.getOrNull()?.let {
-                runCatching { store.save(toManifest(it, "vulkan.fp32.independent", "0.1.0-alpha", sessionId, now)) }
-            }
-            dep.getOrNull()?.let {
-                runCatching { store.save(toManifest(it, "vulkan.fp32.dependency", "0.1.0-alpha", sessionId, now)) }
-            }
-            buf.getOrNull()?.let {
-                runCatching { store.save(toManifest(it, "vulkan.buffer.throughput", "0.1.0-alpha", sessionId, now)) }
-            }
-            val err = indep.exceptionOrNull()?.message
-                ?: dep.exceptionOrNull()?.message
-                ?: buf.exceptionOrNull()?.message
-            _state.value = GpuUiState.Done(indep.getOrNull(), dep.getOrNull(), buf.getOrNull(), err)
+            val indep = runOne(GpuWorkload.FP32_INDEPENDENT, "vulkan.fp32.independent", "0.1.0-alpha", sessionId, now)
+            val dep = runOne(GpuWorkload.FP32_DEPENDENCY, "vulkan.fp32.dependency", "0.1.0-alpha", sessionId, now)
+            val buf = runOne(GpuWorkload.BUFFER_THROUGHPUT, "vulkan.buffer.throughput", "0.1.0-alpha", sessionId, now)
+            _state.value = GpuUiState.Done(indep.first, dep.first, buf.first, indep.second ?: dep.second ?: buf.second)
         }
+    }
+
+    private suspend fun runOne(
+        workload: GpuWorkload,
+        workloadId: String,
+        version: String,
+        sessionId: String,
+        nowIso: String,
+    ): Pair<NativeGpuResult?, String?> {
+        yield()
+        return try {
+            val r = bench.run(workload, 300)
+            runCatching { store.save(toManifest(r, workloadId, version, sessionId, nowIso)) }
+            r to null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null to (e.message ?: "unknown")
+        }
+    }
+
+    fun stop() {
+        job?.cancel()
+        _state.value = GpuUiState.Idle
     }
 
     fun reset() {
@@ -93,6 +112,7 @@ class GpuController(application: Application) : AndroidViewModel(application) {
             cv = r.coefficientOfVariation ?: 0.0,
             correctnessStatus = r.checksumValid,
             validityLevel = if (valid) ValidityLevel.STABLE else ValidityLevel.INVALID,
+            checksumKind = if (workloadId.contains("fp32")) ChecksumKind.ULP else ChecksumKind.EXACT,
             warnings = if (!valid) listOfNotNull(r.invalidReason) else emptyList(),
         )
     }

@@ -31,6 +31,7 @@ import com.siliconverity.nativegpu.NativeGpuResult
 fun GpuScreen(
     state: GpuUiState,
     onRun: () -> Unit,
+    onStop: () -> Unit,
     onBack: () -> Unit,
 ) {
     LazyColumn(
@@ -57,13 +58,22 @@ fun GpuScreen(
 
         val running = state is GpuUiState.Running
         item {
-            Button(
-                onClick = onRun,
-                enabled = !running,
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Text(if (running) "MEASURING..." else "RUN GPU COMPUTE", fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SvSpacing.Sm)) {
+                Button(
+                    onClick = onRun,
+                    enabled = !running,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Text(if (running) "MEASURING..." else "RUN GPU COMPUTE", fontWeight = FontWeight.SemiBold)
+                }
+                if (running) {
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = onStop,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.small,
+                    ) { Text("STOP") }
+                }
             }
         }
 

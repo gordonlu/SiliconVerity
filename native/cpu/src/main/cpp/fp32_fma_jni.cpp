@@ -1,4 +1,5 @@
 #include <jni.h>
+#include <cmath>
 #include "sv_cpu_internal.h"
 
 static float fp32_fma_loop(uint64_t seed, uint64_t iterations) {
@@ -47,5 +48,5 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_siliconverity_nativecpu_Fp32FmaWorkload_nativeCorrectnessCheck(JNIEnv*, jclass) {
     float r1 = fp32_fma_loop(99ull, 10000ull);
     float r2 = fp32_fma_loop(99ull, 10000ull);
-    return (r1 == r2) ? JNI_TRUE : JNI_FALSE;
+    return (r1 == r2 && std::isfinite(r1) && std::isfinite(r2)) ? JNI_TRUE : JNI_FALSE;
 }

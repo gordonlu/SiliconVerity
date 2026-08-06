@@ -24,6 +24,8 @@ class BenchmarkEngine(
 
     fun execute(workload: Workload, protocol: BenchmarkProtocol = DefaultBenchmarkProtocol): RunManifest {
         val spec = workload.spec
+        val runStart = monotonicClockNanos()
+        val thermalStart = environment.thermalStatusStart
         workload.warmUp()
         val warmupSamples = mutableListOf<Sample>()
         val warmupDeadlineMs = spec.warmupMaxMillis
@@ -100,6 +102,11 @@ class BenchmarkEngine(
             outlierCount = summary.outlierCount,
             correctnessStatus = correctnessOk,
             validityLevel = validity,
+            checksumKind = workload.checksumKind,
+            thermalTimeline = listOf(
+                ThermalSample(0.0, thermalStart),
+                ThermalSample((monotonicClockNanos() - runStart) / 1_000_000_000.0, environment.thermalStatusEnd()),
+            ),
             warnings = warnings,
         )
     }

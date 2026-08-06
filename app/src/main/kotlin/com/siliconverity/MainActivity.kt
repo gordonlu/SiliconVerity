@@ -120,6 +120,7 @@ private fun AppShell() {
                 GpuScreen(
                     state = gpuState,
                     onRun = { gpuVm.run() },
+                    onStop = { gpuVm.stop() },
                     onBack = { nav.popBackStack() },
                 )
             }

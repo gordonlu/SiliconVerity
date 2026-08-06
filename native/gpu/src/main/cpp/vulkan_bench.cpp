@@ -172,50 +172,54 @@ struct Harness {
                           const void* pcData, uint32_t pcSize, uint32_t groups, uint32_t repeatK,
                           VkQueryPool queryPool, VkFence fence, bool useGpuTs) {
         RoundTimings t;
-        VkCommandBuffer cmd;
+        VkCommandBuffer cmd = VK_NULL_HANDLE;
         VkCommandBufferAllocateInfo ai{};
         ai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         ai.commandPool = cmdPool; ai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; ai.commandBufferCount = 1;
-        vkAllocateCommandBuffers(device, &ai, &cmd);
+        if (vkAllocateCommandBuffers(device, &ai, &cmd) != VK_SUCCESS || cmd == VK_NULL_HANDLE) {
+            return t;
+        }
         VkCommandBufferBeginInfo bi{};
         bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         uint64_t rec0 = monotonic_nanos();
-        vkBeginCommandBuffer(cmd, &bi);
-        vkCmdResetQueryPool(cmd, queryPool, 0, 2);
-        if (useGpuTs) vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, queryPool, 0);
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &descSet, 0, nullptr);
-        if (pcSize > 0) vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, pcSize, pcData);
-        for (uint32_t i = 0; i < repeatK; i++) vkCmdDispatch(cmd, groups, 1, 1);
-        if (useGpuTs) vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 1);
-        vkEndCommandBuffer(cmd);
+        if (vkBeginCommandBuffer(cmd, &bi) == VK_SUCCESS) {
+            vkCmdResetQueryPool(cmd, queryPool, 0, 2);
+            if (useGpuTs) vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, queryPool, 0);
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &descSet, 0, nullptr);
+            if (pcSize > 0) vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, pcSize, pcData);
+            for (uint32_t i = 0; i < repeatK; i++) vkCmdDispatch(cmd, groups, 1, 1);
+            if (useGpuTs) vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 1);
+            vkEndCommandBuffer(cmd);
+        }
         t.commandRecordingNs = monotonic_nanos() - rec0;
 
         VkSubmitInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         si.commandBufferCount = 1; si.pCommandBuffers = &cmd;
         uint64_t sub0 = monotonic_nanos();
-        vkQueueSubmit(queue, 1, &si, fence);
+        VkResult sr = vkQueueSubmit(queue, 1, &si, fence);
         t.queueSubmitNs = monotonic_nanos() - sub0;
 
         uint64_t wait0 = monotonic_nanos();
-        vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
-        vkResetFences(device, 1, &fence);
+        if (sr == VK_SUCCESS) {
+            VkResult wr = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ULL * 1000000000ULL);
+            vkResetFences(device, 1, &fence);
+            if (wr == VK_SUCCESS && useGpuTs) {
+                uint64_t ts[2] = {0, 0};
+                vkGetQueryPoolResults(device, queryPool, 0, 2, sizeof(ts), ts, sizeof(uint64_t),
+                    VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+                if (ts[0] != 0 && ts[1] != 0) {
+                    uint64_t diff = ts[1] - ts[0];
+                    if (tsValidBits < 64) diff &= ((1ULL << tsValidBits) - 1);
+                    t.gpuExecNs = (uint64_t)((double)diff * (double)tsPeriod);
+                }
+            }
+        }
         t.completionWaitNs = monotonic_nanos() - wait0;
-
-        uint64_t ts[2] = {0, 0};
-        if (useGpuTs) {
-            vkGetQueryPoolResults(device, queryPool, 0, 2, sizeof(ts), ts, sizeof(uint64_t),
-                VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
-        }
         vkFreeCommandBuffers(device, cmdPool, 1, &cmd);
-        if (useGpuTs && ts[0] != 0 && ts[1] != 0) {
-            uint64_t diff = ts[1] - ts[0];
-            if (tsValidBits < 64) diff &= ((1ULL << tsValidBits) - 1);
-            t.gpuExecNs = (uint64_t)((double)diff * (double)tsPeriod);
-        }
         return t;
     }
 
@@ -366,9 +370,13 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
 
     VkQueryPoolCreateInfo qpci{}; qpci.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     qpci.queryType = VK_QUERY_TYPE_TIMESTAMP; qpci.queryCount = 2;
-    vkCreateQueryPool(h.device, &qpci, nullptr, &g.queryPool);
+    if (vkCreateQueryPool(h.device, &qpci, nullptr, &g.queryPool) != VK_SUCCESS) {
+        r.invalidReason = "queryPool"; g.destroy(h.device); destroyBuffer(h.device, io); return r;
+    }
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    vkCreateFence(h.device, &fci, nullptr, &g.fence);
+    if (vkCreateFence(h.device, &fci, nullptr, &g.fence) != VK_SUCCESS) {
+        r.invalidReason = "fence"; g.destroy(h.device); destroyBuffer(h.device, io); return r;
+    }
 
     bool useGpuTs = h.gpuTimestampUsable();
 
@@ -478,9 +486,13 @@ static WorkResult runTriad(Harness& h, int targetMs) {
 
     VkQueryPoolCreateInfo qpci{}; qpci.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     qpci.queryType = VK_QUERY_TYPE_TIMESTAMP; qpci.queryCount = 2;
-    vkCreateQueryPool(h.device, &qpci, nullptr, &g.queryPool);
+    if (vkCreateQueryPool(h.device, &qpci, nullptr, &g.queryPool) != VK_SUCCESS) {
+        r.invalidReason = "queryPool"; g.destroy(h.device); destroyBuffer(h.device, A); destroyBuffer(h.device, B); destroyBuffer(h.device, O); return r;
+    }
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    vkCreateFence(h.device, &fci, nullptr, &g.fence);
+    if (vkCreateFence(h.device, &fci, nullptr, &g.fence) != VK_SUCCESS) {
+        r.invalidReason = "fence"; g.destroy(h.device); destroyBuffer(h.device, A); destroyBuffer(h.device, B); destroyBuffer(h.device, O); return r;
+    }
 
     bool useGpuTs = h.gpuTimestampUsable();
 
