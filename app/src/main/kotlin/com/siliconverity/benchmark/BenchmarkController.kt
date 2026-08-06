@@ -12,6 +12,8 @@ import com.siliconverity.benchmark.storage.StorageReadWorkload
 import com.siliconverity.benchmark.storage.StorageWriteWorkload
 import com.siliconverity.nativecpu.CpuIntegerWorkload
 import com.siliconverity.nativecpu.Fp32FmaWorkload
+import com.siliconverity.nativememory.MemoryCopyWorkload
+import com.siliconverity.nativememory.MemoryReadWorkload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +29,8 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     private val workloads: List<Workload> = listOf(
         CpuIntegerWorkload(),
         Fp32FmaWorkload(),
+        MemoryReadWorkload(),
+        MemoryCopyWorkload(),
         StorageWriteWorkload(benchDir),
         StorageReadWorkload(benchDir),
     )
