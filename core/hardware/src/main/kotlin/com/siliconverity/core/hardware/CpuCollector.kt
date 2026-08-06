@@ -1,8 +1,10 @@
 package com.siliconverity.core.hardware
 
 import android.content.Context
+import android.os.Build
 import com.siliconverity.core.model.Evidence
 import com.siliconverity.core.model.SourceType
+import com.siliconverity.nativecpu.CpuFeatures
 import java.io.File
 
 class CpuCollector : HardwareCollector {
@@ -11,23 +13,8 @@ class CpuCollector : HardwareCollector {
     override fun collect(context: Context): List<CollectedFact> {
         val facts = mutableListOf<CollectedFact>()
 
-        val present = readCpuList("/sys/devices/system/cpu/present")
-        facts += CollectedFact(
-            key = "cpu.cores.configured",
-            evidence = present?.let {
-                listOf(Evidence(SourceType.SYSFS, "/sys/devices/system/cpu/present", it.raw, "count=${it.count}"))
-            } ?: emptyList(),
-            warnings = if (present == null) listOf("/sys/devices/system/cpu/present unreadable") else emptyList(),
-        )
-
-        val online = readCpuList("/sys/devices/system/cpu/online")
-        facts += CollectedFact(
-            key = "cpu.cores.online",
-            evidence = online?.let {
-                listOf(Evidence(SourceType.SYSFS, "/sys/devices/system/cpu/online", it.raw, "count=${it.count}"))
-            } ?: emptyList(),
-            warnings = if (online == null) listOf("/sys/devices/system/cpu/online unreadable") else emptyList(),
-        )
+        facts += coresFact("/sys/devices/system/cpu/present", "cpu.cores.configured")
+        facts += coresFact("/sys/devices/system/cpu/online", "cpu.cores.online")
 
         facts += CollectedFact(
             key = "cpu.cores.jvm_available",
@@ -42,19 +29,50 @@ class CpuCollector : HardwareCollector {
         )
 
         runCatching {
+            val cf = CpuFeatures()
+            facts += CollectedFact(
+                key = "cpu.features",
+                evidence = listOf(
+                    Evidence(
+                        sourceType = SourceType.NDK_API,
+                        sourceId = "getauxval(AT_HWCAP/AT_HWCAP2)",
+                        rawValue = cf.features,
+                        note = "decoded ARM hwcaps, authoritative",
+                    ),
+                ),
+            )
+            facts += CollectedFact(
+                key = "cpu.hwcap",
+                evidence = listOf(
+                    Evidence(
+                        sourceType = SourceType.NDK_API,
+                        sourceId = "getauxval raw",
+                        rawValue = cf.hwcapHex(),
+                    ),
+                ),
+            )
+        }.onFailure {
+            facts += CollectedFact(
+                key = "cpu.features",
+                evidence = emptyList(),
+                warnings = listOf("getauxval unavailable: ${it.message}"),
+            )
+        }
+
+        runCatching {
             val cpuinfo = File("/proc/cpuinfo").readText()
             val features = cpuinfo.lineSequence()
                 .firstOrNull { it.startsWith("Features") }
                 ?.substringAfter(':')?.trim()
             if (!features.isNullOrEmpty()) {
                 facts += CollectedFact(
-                    key = "cpu.features",
+                    key = "cpu.features_procfs",
                     evidence = listOf(
                         Evidence(
                             sourceType = SourceType.PROCFS,
                             sourceId = "/proc/cpuinfo:Features",
                             rawValue = features,
-                            note = "ARM hwcaps; supplement to NDK getauxval",
+                            note = "supplement to NDK getauxval",
                         ),
                     ),
                 )
@@ -76,6 +94,17 @@ class CpuCollector : HardwareCollector {
         }
 
         return facts
+    }
+
+    private fun coresFact(path: String, key: String): CollectedFact {
+        val list = readCpuList(path)
+        return CollectedFact(
+            key = key,
+            evidence = list?.let {
+                listOf(Evidence(SourceType.SYSFS, path, it.raw, "count=${it.count}"))
+            } ?: emptyList(),
+            warnings = if (list == null) listOf("$path unreadable") else emptyList(),
+        )
     }
 
     private data class CpuList(val raw: String, val count: Int)

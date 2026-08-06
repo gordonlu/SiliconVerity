@@ -24,6 +24,7 @@ kotlin {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:provenance"))
+    implementation(project(":native:cpu"))
     implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.junit)
 }
