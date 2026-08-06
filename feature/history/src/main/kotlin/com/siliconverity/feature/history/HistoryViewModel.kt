@@ -35,4 +35,11 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
             _state.value = HistoryUiState(loading = false, runs = runs)
         }
     }
+
+    fun clear() {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { store.clear() }
+            _state.value = HistoryUiState(loading = false, runs = emptyList())
+        }
+    }
 }

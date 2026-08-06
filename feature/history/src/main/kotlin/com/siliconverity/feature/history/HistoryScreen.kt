@@ -4,35 +4,36 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.siliconverity.core.benchmark.RunManifest
 import com.siliconverity.core.benchmark.ValidityLevel
 import com.siliconverity.core.benchmark.WorkloadFormat
 import com.siliconverity.core.designsystem.SvSpacing
 
+private data class Session(val id: String, val header: String, val runs: List<RunManifest>)
+
 @Composable
 fun HistoryScreen(
     state: HistoryUiState,
     onOpenRun: (String) -> Unit,
+    onClear: () -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = SvSpacing.PageHorizontal,
             end = SvSpacing.PageHorizontal,
@@ -42,28 +43,60 @@ fun HistoryScreen(
         verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
     ) {
         item {
-            Text(
-                "HISTORY",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = SvSpacing.Sm),
-            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("HISTORY", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onClear, enabled = !state.loading && state.runs.isNotEmpty()) { Text("清空") }
+            }
         }
         when {
             state.loading -> item { CircularProgressIndicator() }
             state.runs.isEmpty() -> item {
-                Text("尚无运行记录。运行一次 benchmark 后此处显示历史。", style = MaterialTheme.typography.bodyMedium)
+                Text("尚无运行记录。", style = MaterialTheme.typography.bodyMedium)
             }
-            else -> items(state.runs, key = { it.runId }) { m ->
-                RunRow(m, onOpenRun)
+            else -> {
+                val sessions = groupSessions(state.runs)
+                sessions.forEach { session ->
+                    item(key = "h-${session.id}") {
+                        Column(modifier = Modifier.padding(top = SvSpacing.Sm, bottom = SvSpacing.Xs)) {
+                            Text(
+                                session.header,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                            Text(
+                                "${session.runs.size} 项",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    items(session.runs, key = { "r-${it.runId}" }) { m ->
+                        RunRow(m, onOpenRun)
+                    }
+                }
             }
         }
     }
 }
 
+private fun groupSessions(runs: List<RunManifest>): List<Session> {
+    val sessions = mutableListOf<Session>()
+    for (run in runs) {
+        val key = run.sessionId.ifEmpty { run.runId }
+        if (sessions.isNotEmpty() && sessions.last().id == key) {
+            sessions[sessions.lastIndex] = sessions.last().let { Session(it.id, it.header, it.runs + run) }
+        } else {
+            val header = run.startedAt.ifEmpty { key.take(8) }
+            sessions += Session(key, header, listOf(run))
+        }
+    }
+    return sessions
+}
+
 @Composable
 private fun RunRow(manifest: RunManifest, onOpenRun: (String) -> Unit) {
-    androidx.compose.material3.Surface(
+    Surface(
         onClick = { onOpenRun(manifest.runId) },
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surface,
@@ -88,7 +121,7 @@ private fun RunRow(manifest: RunManifest, onOpenRun: (String) -> Unit) {
                 fontFamily = FontFamily.Monospace,
             )
             Text(
-                "CV %.4f  •  %s".format(manifest.cv, manifest.startedAt.ifEmpty { manifest.runId.take(8) }),
+                "CV %.4f".format(manifest.cv),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

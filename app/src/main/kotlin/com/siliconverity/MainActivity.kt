@@ -127,7 +127,11 @@ private fun AppShell() {
                 val historyVm: HistoryViewModel = viewModel()
                 val historyState by historyVm.state.collectAsStateWithLifecycle()
                 androidx.compose.runtime.LaunchedEffect(Unit) { historyVm.load() }
-                HistoryScreen(historyState, onOpenRun = { runId -> nav.navigate("run/$runId") })
+                HistoryScreen(
+                    historyState,
+                    onOpenRun = { runId -> nav.navigate("run/$runId") },
+                    onClear = { historyVm.clear() },
+                )
             }
             composable("settings") {
                 SettingsScreen()

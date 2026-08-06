@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class RunManifest(
     val runId: String,
+    val sessionId: String = "",
     val appVersion: String,
     val benchmarkEngineVersion: String,
     val workloadId: String,

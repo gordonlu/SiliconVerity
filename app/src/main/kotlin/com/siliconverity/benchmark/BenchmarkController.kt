@@ -42,11 +42,12 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     fun run() {
         viewModelScope.launch(Dispatchers.Default) {
             _state.value = BenchmarkUiState.Running
+            val sessionId = java.util.UUID.randomUUID().toString()
             val results = mutableListOf<RunResult>()
             var error: String? = null
             for (workload in workloads) {
                 val outcome = runCatching { engine.execute(workload) }
-                val manifest = outcome.getOrNull()
+                val manifest = outcome.getOrNull()?.copy(sessionId = sessionId)
                 if (manifest == null) {
                     error = outcome.exceptionOrNull()?.message
                     break
