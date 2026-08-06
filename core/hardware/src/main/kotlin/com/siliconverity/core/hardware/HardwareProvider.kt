@@ -9,7 +9,10 @@ class HardwareProvider(private val context: Context) {
 
     private val collectors: List<HardwareCollector> = listOf(
         SocCollector(),
+        CpuCollector(),
         MemoryCollector(),
+        GpuCollector(),
+        StorageCollector(),
         ThermalCollector(),
     )
 
