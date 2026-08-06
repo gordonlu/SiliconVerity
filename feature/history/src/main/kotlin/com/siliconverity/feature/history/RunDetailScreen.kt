@@ -44,6 +44,7 @@ fun RunDetailScreen(
     val manifest by produceState<RunManifest?>(initialValue = null, runId, runsDir) {
         value = withContext(Dispatchers.IO) { RunManifestStore(runsDir).load(runId) }
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
@@ -53,6 +54,24 @@ fun RunDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
                     }
+                },
+                actions = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        val json = runCatching {
+                            File(runsDir, "$runId.json").readText()
+                        }.getOrDefault("")
+                        val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(android.content.Intent.EXTRA_TEXT, json)
+                            putExtra(android.content.Intent.EXTRA_TITLE, "SiliconVerity Run Manifest")
+                        }
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent.createChooser(send, "分享 Run Manifest")
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }) { Text("分享") }
                 },
             )
         },
