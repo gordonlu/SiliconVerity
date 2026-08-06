@@ -212,6 +212,14 @@ private fun BenchmarkResult(state: BenchmarkUiState.Done) {
                 color = MaterialTheme.colorScheme.error,
             )
         }
+        state.savedPath?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "已保存: $it",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
