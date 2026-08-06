@@ -54,6 +54,7 @@ dependencies {
     implementation(project(":feature:home"))
     implementation(project(":feature:history"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:sustained"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)

@@ -45,6 +45,8 @@ import com.siliconverity.feature.history.HistoryScreen
 import com.siliconverity.feature.history.HistoryViewModel
 import com.siliconverity.feature.history.RunDetailScreen
 import com.siliconverity.feature.settings.SettingsScreen
+import com.siliconverity.feature.sustained.SustainedScreen
+import com.siliconverity.benchmark.SustainedController
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -87,6 +89,7 @@ private fun AppShell() {
                     benchmarkState = benchmarkState,
                     onStartBenchmark = { benchmarkVm.run() },
                     onOpenHardware = { nav.navigate("hardware") },
+                    onOpenSustained = { nav.navigate("sustained") },
                     onOpenRun = { runId -> nav.navigate("run/$runId") },
                 )
             }
@@ -94,6 +97,16 @@ private fun AppShell() {
                 HardwareScreen(
                     hardwareState = hardwareState,
                     onRefresh = { hardwareVm.load() },
+                )
+            }
+            composable("sustained") {
+                val sustainedVm: SustainedController = viewModel()
+                val sustainedState by sustainedVm.state.collectAsStateWithLifecycle()
+                SustainedScreen(
+                    state = sustainedState,
+                    onStart = { durationSec -> sustainedVm.start(durationSec) },
+                    onStop = { sustainedVm.stop() },
+                    onReset = { sustainedVm.reset() },
                 )
             }
             composable("history") {

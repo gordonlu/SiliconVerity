@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -45,6 +46,7 @@ fun HomeScreen(
     benchmarkState: BenchmarkUiState,
     onStartBenchmark: () -> Unit,
     onOpenHardware: () -> Unit,
+    onOpenSustained: () -> Unit,
     onOpenRun: (String) -> Unit,
 ) {
     val deviceId = rememberDeviceId()
@@ -66,6 +68,15 @@ fun HomeScreen(
         item { LastRun(lastRun, onOpenRun) }
         item {
             PrimaryCta(running = running, onClick = onStartBenchmark)
+        }
+        item {
+            OutlinedButton(
+                onClick = onOpenSustained,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small,
+            ) {
+                Text("SUSTAINED TEST  >", fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
