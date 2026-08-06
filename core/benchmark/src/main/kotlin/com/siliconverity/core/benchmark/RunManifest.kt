@@ -9,6 +9,7 @@ data class RunManifest(
     val benchmarkEngineVersion: String,
     val workloadId: String,
     val workloadVersion: String,
+    val startedAt: String = "",
     val abi: String,
     val androidVersion: String,
     val securityPatch: String,

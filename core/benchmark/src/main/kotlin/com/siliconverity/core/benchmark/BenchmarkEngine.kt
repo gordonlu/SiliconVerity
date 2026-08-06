@@ -73,6 +73,7 @@ class BenchmarkEngine(
             benchmarkEngineVersion = environment.engineVersion,
             workloadId = spec.workloadId,
             workloadVersion = spec.workloadVersion,
+            startedAt = environment.nowIso(),
             abi = environment.abi,
             androidVersion = environment.androidVersion,
             securityPatch = environment.securityPatch,
