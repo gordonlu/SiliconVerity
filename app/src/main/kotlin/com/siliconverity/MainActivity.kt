@@ -4,8 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -83,6 +86,7 @@ private fun AppShell() {
             composable("history") {
                 val historyVm: HistoryViewModel = viewModel()
                 val historyState by historyVm.state.collectAsStateWithLifecycle()
+                androidx.compose.runtime.LaunchedEffect(Unit) { historyVm.load() }
                 HistoryScreen(historyState, onOpenRun = { runId -> nav.navigate("run/$runId") })
             }
             composable("settings") {
@@ -140,7 +144,7 @@ private fun SvBottomBar(nav: NavController) {
 
 @Composable
 private fun SettingsPlaceholder() {
-    Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+    Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(20.dp)) {
         Text("SETTINGS", style = MaterialTheme.typography.titleLarge)
         Text(
             "设置页待实现（省电模式检测、性能模式、导出、关于、隐私等）。",
