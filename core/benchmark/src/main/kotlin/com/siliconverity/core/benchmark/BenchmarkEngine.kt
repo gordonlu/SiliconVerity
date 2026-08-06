@@ -15,6 +15,7 @@ class BenchmarkEngine(
         val socReported: String
         val batteryLevel: Int
         val chargingState: String
+        val powerSaveMode: Boolean
         val thermalStatusStart: String
         fun thermalStatusEnd(): String
         fun nowIso(): String
@@ -81,6 +82,7 @@ class BenchmarkEngine(
             socReported = environment.socReported,
             batteryLevel = environment.batteryLevel,
             chargingState = environment.chargingState,
+            powerSaveMode = environment.powerSaveMode,
             thermalStatusStart = environment.thermalStatusStart,
             thermalStatusEnd = environment.thermalStatusEnd(),
             testOrder = listOf(spec.workloadId),

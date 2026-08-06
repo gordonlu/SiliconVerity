@@ -44,6 +44,7 @@ import com.siliconverity.feature.home.HomeScreen
 import com.siliconverity.feature.history.HistoryScreen
 import com.siliconverity.feature.history.HistoryViewModel
 import com.siliconverity.feature.history.RunDetailScreen
+import com.siliconverity.feature.settings.SettingsScreen
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -102,7 +103,7 @@ private fun AppShell() {
                 HistoryScreen(historyState, onOpenRun = { runId -> nav.navigate("run/$runId") })
             }
             composable("settings") {
-                SettingsPlaceholder()
+                SettingsScreen()
             }
             composable(
                 route = "run/{runId}",
@@ -151,17 +152,5 @@ private fun SvBottomBar(nav: NavController) {
                 ),
             )
         }
-    }
-}
-
-@Composable
-private fun SettingsPlaceholder() {
-    Column(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(20.dp)) {
-        Text("SETTINGS", style = MaterialTheme.typography.titleLarge)
-        Text(
-            "设置页待实现（省电模式检测、性能模式、导出、关于、隐私等）。",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }

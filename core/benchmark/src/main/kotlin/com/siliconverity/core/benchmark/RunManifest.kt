@@ -17,6 +17,7 @@ data class RunManifest(
     val socReported: String,
     val batteryLevel: Int,
     val chargingState: String,
+    val powerSaveMode: Boolean = false,
     val thermalStatusStart: String,
     val thermalStatusEnd: String,
     val testOrder: List<String>,

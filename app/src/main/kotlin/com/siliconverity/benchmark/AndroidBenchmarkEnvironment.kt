@@ -31,6 +31,9 @@ class AndroidBenchmarkEnvironment(context: Context) : BenchmarkEngine.Environmen
         get() = runCatching { if (bm?.isCharging == true) "charging" else "not charging" }
             .getOrDefault("unknown")
 
+    override val powerSaveMode: Boolean
+        get() = pm?.isPowerSaveMode ?: false
+
     override val thermalStatusStart: String
         get() = pm?.currentThermalStatus?.let { com.siliconverity.core.hardware.ThermalStatusNames.name(it) } ?: "unknown"
 
