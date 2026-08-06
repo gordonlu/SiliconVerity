@@ -24,6 +24,7 @@ class BenchmarkEngine(
 
     fun execute(workload: Workload, validityCvThreshold: Double = 0.07): RunManifest {
         val spec = workload.spec
+        workload.warmUp()
         val warmupSamples = mutableListOf<Sample>()
         val warmupDeadlineMs = spec.warmupMaxMillis
         val warmupStart = monotonicClockNanos()

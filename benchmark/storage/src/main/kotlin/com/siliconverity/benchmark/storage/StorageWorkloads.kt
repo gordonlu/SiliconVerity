@@ -123,14 +123,14 @@ class StorageReadWorkload(
     private var warmed = false
 
     override fun warmUp() {
+        runOnce()
+    }
+
+    override fun runOnce(): Sample {
         if (!warmed) {
             expectedChecksum = writeDeterministic(0xC0FFEEL)
             warmed = true
         }
-        readAndChecksum()
-    }
-
-    override fun runOnce(): Sample {
         val t0 = System.nanoTime()
         readAndChecksum()
         val t1 = System.nanoTime()

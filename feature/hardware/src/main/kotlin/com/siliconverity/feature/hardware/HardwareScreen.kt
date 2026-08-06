@@ -5,20 +5,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.siliconverity.core.designsystem.SvSpacing
 import com.siliconverity.core.model.Confidence
@@ -38,35 +44,37 @@ import com.siliconverity.core.model.HardwareFact
 fun HardwareScreen(
     hardwareState: HardwareUiState,
     onRefresh: () -> Unit,
+    onBack: () -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
-        contentPadding = PaddingValues(
-            start = SvSpacing.PageHorizontal,
-            end = SvSpacing.PageHorizontal,
-            top = SvSpacing.Md,
-            bottom = SvSpacing.Md,
-        ),
-        verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
-    ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("硬件信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                androidx.compose.material3.TextButton(onClick = onRefresh) { Text("刷新") }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("HARDWARE", style = MaterialTheme.typography.labelLarge) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    TextButton(onClick = onRefresh) { Text("刷新") }
+                },
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(horizontal = SvSpacing.PageHorizontal, vertical = SvSpacing.Sm),
+            verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
+        ) {
+            if (hardwareState.loading && hardwareState.facts.isEmpty()) {
+                item { androidx.compose.material3.CircularProgressIndicator() }
             }
-        }
-        if (hardwareState.loading && hardwareState.facts.isEmpty()) {
-            item { androidx.compose.material3.CircularProgressIndicator() }
-        }
-        hardwareState.error?.let {
-            item { Text("采集出错: $it", color = MaterialTheme.colorScheme.error) }
-        }
-        items(hardwareState.facts, key = { it.key }) { fact ->
-            FactCard(fact)
+            hardwareState.error?.let {
+                item { Text("采集出错: $it", color = MaterialTheme.colorScheme.error) }
+            }
+            items(hardwareState.facts, key = { it.key }) { fact ->
+                FactCard(fact)
+            }
         }
     }
 }
@@ -82,9 +90,24 @@ private fun FactCard(fact: HardwareFact) {
         shape = MaterialTheme.shapes.small,
     ) {
         Column(modifier = Modifier.padding(SvSpacing.Md)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(fact.key, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
-                Text(fact.displayValue ?: "未知", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                Text(
+                    fact.key,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(end = SvSpacing.Sm),
+                )
+                Text(
+                    fact.displayValue ?: "未知",
+                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.weight(1f),
+                )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(

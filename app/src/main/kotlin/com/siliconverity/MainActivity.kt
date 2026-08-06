@@ -97,6 +97,7 @@ private fun AppShell() {
                 HardwareScreen(
                     hardwareState = hardwareState,
                     onRefresh = { hardwareVm.load() },
+                    onBack = { nav.popBackStack() },
                 )
             }
             composable("sustained") {
@@ -107,6 +108,7 @@ private fun AppShell() {
                     onStart = { durationSec -> sustainedVm.start(durationSec) },
                     onStop = { sustainedVm.stop() },
                     onReset = { sustainedVm.reset() },
+                    onBack = { nav.popBackStack() },
                 )
             }
             composable("history") {
