@@ -6,7 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.siliconverity.core.benchmark.BenchmarkEngine
 import com.siliconverity.core.benchmark.BenchmarkUiState
 import com.siliconverity.core.benchmark.RunResult
+import com.siliconverity.core.benchmark.Workload
 import com.siliconverity.core.storage.RunManifestStore
+import com.siliconverity.benchmark.storage.StorageReadWorkload
+import com.siliconverity.benchmark.storage.StorageWriteWorkload
 import com.siliconverity.nativecpu.CpuIntegerWorkload
 import com.siliconverity.nativecpu.Fp32FmaWorkload
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +23,13 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
 
     private val env = AndroidBenchmarkEnvironment(application)
     private val engine = BenchmarkEngine({ System.nanoTime() }, env)
-    private val workloads = listOf(CpuIntegerWorkload(), Fp32FmaWorkload())
+    private val benchDir = File(application.filesDir, "bench")
+    private val workloads: List<Workload> = listOf(
+        CpuIntegerWorkload(),
+        Fp32FmaWorkload(),
+        StorageWriteWorkload(benchDir),
+        StorageReadWorkload(benchDir),
+    )
     private val store = RunManifestStore(File(application.filesDir, "runs"))
 
     private val _state = MutableStateFlow<BenchmarkUiState>(BenchmarkUiState.Idle)

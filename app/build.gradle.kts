@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":core:benchmark"))
     implementation(project(":core:storage"))
     implementation(project(":core:designsystem"))
+    implementation(project(":benchmark:storage"))
     implementation(project(":native:cpu"))
     implementation(project(":feature:hardware"))
     implementation(project(":feature:home"))
