@@ -47,6 +47,8 @@ import com.siliconverity.feature.history.RunDetailScreen
 import com.siliconverity.feature.settings.SettingsScreen
 import com.siliconverity.feature.sustained.SustainedScreen
 import com.siliconverity.benchmark.SustainedController
+import com.siliconverity.feature.gpu.GpuScreen
+import com.siliconverity.benchmark.GpuController
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -90,6 +92,7 @@ private fun AppShell() {
                     onStartBenchmark = { benchmarkVm.run() },
                     onOpenHardware = { nav.navigate("hardware") },
                     onOpenSustained = { nav.navigate("sustained") },
+                    onOpenGpu = { nav.navigate("gpu") },
                     onOpenRun = { runId -> nav.navigate("run/$runId") },
                 )
             }
@@ -108,6 +111,15 @@ private fun AppShell() {
                     onStart = { durationSec -> sustainedVm.start(durationSec) },
                     onStop = { sustainedVm.stop() },
                     onReset = { sustainedVm.reset() },
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable("gpu") {
+                val gpuVm: GpuController = viewModel()
+                val gpuState by gpuVm.state.collectAsStateWithLifecycle()
+                GpuScreen(
+                    state = gpuState,
+                    onRun = { gpuVm.run() },
                     onBack = { nav.popBackStack() },
                 )
             }

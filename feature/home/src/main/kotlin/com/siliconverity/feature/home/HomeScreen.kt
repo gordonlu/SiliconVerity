@@ -47,6 +47,7 @@ fun HomeScreen(
     onStartBenchmark: () -> Unit,
     onOpenHardware: () -> Unit,
     onOpenSustained: () -> Unit,
+    onOpenGpu: () -> Unit,
     onOpenRun: (String) -> Unit,
 ) {
     val deviceId = rememberDeviceId()
@@ -70,12 +71,17 @@ fun HomeScreen(
             PrimaryCta(running = running, onClick = onStartBenchmark)
         }
         item {
-            OutlinedButton(
-                onClick = onOpenSustained,
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.small,
-            ) {
-                Text("SUSTAINED TEST  >", fontWeight = FontWeight.SemiBold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SvSpacing.Sm)) {
+                OutlinedButton(
+                    onClick = onOpenSustained,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                ) { Text("SUSTAINED", fontWeight = FontWeight.SemiBold) }
+                OutlinedButton(
+                    onClick = onOpenGpu,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                ) { Text("GPU COMPUTE", fontWeight = FontWeight.SemiBold) }
             }
         }
     }

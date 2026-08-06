@@ -50,11 +50,13 @@ dependencies {
     implementation(project(":benchmark:storage"))
     implementation(project(":native:cpu"))
     implementation(project(":native:memory"))
+    implementation(project(":native:gpu"))
     implementation(project(":feature:hardware"))
     implementation(project(":feature:home"))
     implementation(project(":feature:history"))
     implementation(project(":feature:settings"))
     implementation(project(":feature:sustained"))
+    implementation(project(":feature:gpu"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
