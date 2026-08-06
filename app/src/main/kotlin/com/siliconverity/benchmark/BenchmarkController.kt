@@ -4,9 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.siliconverity.core.benchmark.BenchmarkEngine
+import com.siliconverity.core.benchmark.BenchmarkUiState
+import com.siliconverity.core.benchmark.RunResult
 import com.siliconverity.core.storage.RunManifestStore
-import com.siliconverity.feature.hardware.BenchmarkUiState
-import com.siliconverity.feature.hardware.RunResult
 import com.siliconverity.nativecpu.CpuIntegerWorkload
 import com.siliconverity.nativecpu.Fp32FmaWorkload
 import kotlinx.coroutines.Dispatchers

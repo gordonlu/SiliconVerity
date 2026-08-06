@@ -101,7 +101,7 @@ class CpuCollector : HardwareCollector {
         return CollectedFact(
             key = key,
             evidence = list?.let {
-                listOf(Evidence(SourceType.SYSFS, path, it.raw, "count=${it.count}"))
+                listOf(Evidence(SourceType.SYSFS, path, it.count.toString(), "range=${it.raw}"))
             } ?: emptyList(),
             warnings = if (list == null) listOf("$path unreadable") else emptyList(),
         )

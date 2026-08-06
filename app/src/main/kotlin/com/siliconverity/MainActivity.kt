@@ -36,9 +36,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.siliconverity.benchmark.BenchmarkController
+import com.siliconverity.core.benchmark.BenchmarkUiState
 import com.siliconverity.core.designsystem.SvTheme
 import com.siliconverity.feature.hardware.HardwareScreen
 import com.siliconverity.feature.hardware.HardwareViewModel
+import com.siliconverity.feature.home.HomeScreen
 import com.siliconverity.feature.history.HistoryScreen
 import com.siliconverity.feature.history.HistoryViewModel
 import com.siliconverity.feature.history.RunDetailScreen
@@ -76,11 +78,21 @@ private fun AppShell() {
             modifier = Modifier.weight(1f),
         ) {
             composable("home") {
+                val lastRun = (benchmarkState as? BenchmarkUiState.Done)
+                    ?.results?.lastOrNull()?.manifest
+                HomeScreen(
+                    hardwareFacts = hardwareState.facts,
+                    lastRun = lastRun,
+                    benchmarkState = benchmarkState,
+                    onStartBenchmark = { benchmarkVm.run() },
+                    onOpenHardware = { nav.navigate("hardware") },
+                    onOpenRun = { runId -> nav.navigate("run/$runId") },
+                )
+            }
+            composable("hardware") {
                 HardwareScreen(
                     hardwareState = hardwareState,
-                    benchmarkState = benchmarkState,
                     onRefresh = { hardwareVm.load() },
-                    onRunBenchmark = { benchmarkVm.run() },
                 )
             }
             composable("history") {

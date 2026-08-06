@@ -5,22 +5,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,11 +26,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.siliconverity.core.benchmark.ValidityLevel
+import com.siliconverity.core.designsystem.SvSpacing
 import com.siliconverity.core.model.Confidence
 import com.siliconverity.core.model.HardwareFact
 
@@ -40,48 +37,36 @@ import com.siliconverity.core.model.HardwareFact
 @Composable
 fun HardwareScreen(
     hardwareState: HardwareUiState,
-    benchmarkState: BenchmarkUiState,
     onRefresh: () -> Unit,
-    onRunBenchmark: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("芯鉴 · SiliconVerity") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                ),
-            )
-        },
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item { BenchmarkCard(benchmarkState, onRunBenchmark) }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("硬件信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Button(onClick = onRefresh) { Text("刷新") }
-                }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
+        contentPadding = PaddingValues(
+            start = SvSpacing.PageHorizontal,
+            end = SvSpacing.PageHorizontal,
+            top = SvSpacing.Md,
+            bottom = SvSpacing.Md,
+        ),
+        verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
+    ) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("硬件信息", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                androidx.compose.material3.TextButton(onClick = onRefresh) { Text("刷新") }
             }
-            if (hardwareState.loading && hardwareState.facts.isEmpty()) {
-                item { CircularProgressIndicator() }
-            }
-            hardwareState.error?.let {
-                item { Text("采集出错: $it", color = MaterialTheme.colorScheme.error) }
-            }
-            items(hardwareState.facts, key = { it.key }) { fact ->
-                FactCard(fact)
-            }
+        }
+        if (hardwareState.loading && hardwareState.facts.isEmpty()) {
+            item { androidx.compose.material3.CircularProgressIndicator() }
+        }
+        hardwareState.error?.let {
+            item { Text("采集出错: $it", color = MaterialTheme.colorScheme.error) }
+        }
+        items(hardwareState.facts, key = { it.key }) { fact ->
+            FactCard(fact)
         }
     }
 }
@@ -94,11 +79,12 @@ private fun FactCard(fact: HardwareFact) {
         modifier = Modifier.fillMaxWidth(),
         onClick = { expanded = !expanded },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = MaterialTheme.shapes.small,
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(SvSpacing.Md)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(fact.key, fontWeight = FontWeight.SemiBold)
-                Text(fact.displayValue ?: "未知", fontFamily = FontFamily.Monospace)
+                Text(fact.key, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+                Text(fact.displayValue ?: "未知", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
@@ -109,7 +95,7 @@ private fun FactCard(fact: HardwareFact) {
                 ConfidenceChip(fact.confidence)
             }
             if (expanded) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(SvSpacing.Sm))
                 Text("来源 ID: ${fact.sourceId}", style = MaterialTheme.typography.bodySmall)
                 Text("原始值: ${fact.rawValue}", style = MaterialTheme.typography.bodySmall)
                 Text("采集时间: ${fact.collectedAt}", style = MaterialTheme.typography.bodySmall)
@@ -151,81 +137,4 @@ private fun ConfidenceChip(confidence: Confidence) {
         color = color,
         fontWeight = FontWeight.SemiBold,
     )
-}
-
-@Composable
-private fun BenchmarkCard(state: BenchmarkUiState, onRun: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("CPU 测试组（INT64 ALU + FP32 FMA）", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = onRun, enabled = state !is BenchmarkUiState.Running) {
-                Text(if (state is BenchmarkUiState.Running) "运行中..." else "运行 CPU workload 组")
-            }
-            Spacer(Modifier.height(8.dp))
-            when (state) {
-                is BenchmarkUiState.Idle -> Text("尚未运行", style = MaterialTheme.typography.bodyMedium)
-                is BenchmarkUiState.Running -> Text("逐项预热 + 7 轮测量进行中…", style = MaterialTheme.typography.bodyMedium)
-                is BenchmarkUiState.Done -> {
-                    state.error?.let { Text("出错: $it", color = MaterialTheme.colorScheme.error) }
-                    if (state.results.isEmpty() && state.error == null) {
-                        Text("无结果", color = MaterialTheme.colorScheme.error)
-                    }
-                    state.results.forEach { r -> BenchmarkResult(r) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BenchmarkResult(r: RunResult) {
-    val m = r.manifest
-    val isFp = m.workloadId.contains("fp32")
-    val medianScaled = if (isFp) m.median / 1_000_000_000.0 else m.median / 1_000_000.0
-    val madScaled = if (isFp) m.mad / 1_000_000_000.0 else m.mad / 1_000_000.0
-    val unit = if (isFp) "GFLOPS" else "M ops/s"
-    Column(modifier = Modifier.padding(top = 8.dp)) {
-        Text("${m.workloadId} v${m.workloadVersion}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-        Text("运行 ID: ${m.runId}", style = MaterialTheme.typography.bodySmall)
-        Text(
-            "中位数: %.2f %s".format(medianScaled, unit),
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text("MAD: %.2f %s".format(madScaled, unit), style = MaterialTheme.typography.bodySmall)
-        Text("CV: %.4f".format(m.cv), style = MaterialTheme.typography.bodySmall)
-        Text(
-            "有效性: ${m.validityLevel.name}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = validityColor(m.validityLevel),
-        )
-        Text("正确性: ${if (m.correctnessStatus) "通过" else "失败"}", style = MaterialTheme.typography.bodySmall)
-        Text("热状态: ${m.thermalStatusStart} -> ${m.thermalStatusEnd}", style = MaterialTheme.typography.bodySmall)
-        if (m.warnings.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "警告: ${m.warnings.joinToString()}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-        r.savedPath?.let {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "已保存: $it",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-@Composable
-private fun validityColor(level: ValidityLevel): Color = when (level) {
-    ValidityLevel.CLEAN -> MaterialTheme.colorScheme.primary
-    ValidityLevel.ACCEPTABLE -> MaterialTheme.colorScheme.tertiary
-    ValidityLevel.NOISY -> MaterialTheme.colorScheme.error
-    ValidityLevel.INVALID -> MaterialTheme.colorScheme.error
 }

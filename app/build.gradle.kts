@@ -49,6 +49,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":native:cpu"))
     implementation(project(":feature:hardware"))
+    implementation(project(":feature:home"))
     implementation(project(":feature:history"))
 
     implementation(platform(libs.androidx.compose.bom))

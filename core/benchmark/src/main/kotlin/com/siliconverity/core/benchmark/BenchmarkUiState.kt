@@ -1,6 +1,4 @@
-package com.siliconverity.feature.hardware
-
-import com.siliconverity.core.benchmark.RunManifest
+package com.siliconverity.core.benchmark
 
 data class RunResult(val manifest: RunManifest, val savedPath: String?)
 
