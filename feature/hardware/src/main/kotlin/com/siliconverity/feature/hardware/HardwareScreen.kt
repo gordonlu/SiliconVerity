@@ -157,53 +157,51 @@ private fun ConfidenceChip(confidence: Confidence) {
 private fun BenchmarkCard(state: BenchmarkUiState, onRun: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("CPU 整数 ALU 测试", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("CPU 测试组（INT64 ALU + FP32 FMA）", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             Button(onClick = onRun, enabled = state !is BenchmarkUiState.Running) {
-                Text(if (state is BenchmarkUiState.Running) "运行中..." else "运行 CPU Integer workload")
+                Text(if (state is BenchmarkUiState.Running) "运行中..." else "运行 CPU workload 组")
             }
             Spacer(Modifier.height(8.dp))
             when (state) {
                 is BenchmarkUiState.Idle -> Text("尚未运行", style = MaterialTheme.typography.bodyMedium)
-                is BenchmarkUiState.Running -> Text("预热 + 7 轮测量进行中…", style = MaterialTheme.typography.bodyMedium)
-                is BenchmarkUiState.Done -> BenchmarkResult(state)
+                is BenchmarkUiState.Running -> Text("逐项预热 + 7 轮测量进行中…", style = MaterialTheme.typography.bodyMedium)
+                is BenchmarkUiState.Done -> {
+                    state.error?.let { Text("出错: $it", color = MaterialTheme.colorScheme.error) }
+                    if (state.results.isEmpty() && state.error == null) {
+                        Text("无结果", color = MaterialTheme.colorScheme.error)
+                    }
+                    state.results.forEach { r -> BenchmarkResult(r) }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun BenchmarkResult(state: BenchmarkUiState.Done) {
-    val m = state.manifest
-    if (state.error != null) {
-        Text("出错: ${state.error}", color = MaterialTheme.colorScheme.error)
-        return
-    }
-    if (m == null) {
-        Text("无结果", color = MaterialTheme.colorScheme.error)
-        return
-    }
-    val medianMops = m.median / 1_000_000.0
-    Column {
-        Text("workload: ${m.workloadId} v${m.workloadVersion}", style = MaterialTheme.typography.bodySmall)
+private fun BenchmarkResult(r: RunResult) {
+    val m = r.manifest
+    val isFp = m.workloadId.contains("fp32")
+    val medianScaled = if (isFp) m.median / 1_000_000_000.0 else m.median / 1_000_000.0
+    val madScaled = if (isFp) m.mad / 1_000_000_000.0 else m.mad / 1_000_000.0
+    val unit = if (isFp) "GFLOPS" else "M ops/s"
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        Text("${m.workloadId} v${m.workloadVersion}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
         Text("运行 ID: ${m.runId}", style = MaterialTheme.typography.bodySmall)
         Text(
-            "中位数吞吐: %.2f M ops/s".format(medianMops),
+            "中位数: %.2f %s".format(medianScaled, unit),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.SemiBold,
         )
-        Text("MAD: %.2f M ops/s".format(m.mad / 1_000_000.0), style = MaterialTheme.typography.bodySmall)
+        Text("MAD: %.2f %s".format(madScaled, unit), style = MaterialTheme.typography.bodySmall)
         Text("CV: %.4f".format(m.cv), style = MaterialTheme.typography.bodySmall)
         Text(
             "有效性: ${m.validityLevel.name}",
             style = MaterialTheme.typography.bodyMedium,
             color = validityColor(m.validityLevel),
         )
-        Text("正确性校验: ${if (m.correctnessStatus) "通过" else "失败"}", style = MaterialTheme.typography.bodySmall)
+        Text("正确性: ${if (m.correctnessStatus) "通过" else "失败"}", style = MaterialTheme.typography.bodySmall)
         Text("热状态: ${m.thermalStatusStart} -> ${m.thermalStatusEnd}", style = MaterialTheme.typography.bodySmall)
-        Text("设备: ${m.deviceModel} / ${m.socReported}", style = MaterialTheme.typography.bodySmall)
-        Text("Android: ${m.androidVersion} (${m.securityPatch})", style = MaterialTheme.typography.bodySmall)
-        Text("ABI: ${m.abi}", style = MaterialTheme.typography.bodySmall)
         if (m.warnings.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Text(
@@ -212,7 +210,7 @@ private fun BenchmarkResult(state: BenchmarkUiState.Done) {
                 color = MaterialTheme.colorScheme.error,
             )
         }
-        state.savedPath?.let {
+        r.savedPath?.let {
             Spacer(Modifier.height(4.dp))
             Text(
                 "已保存: $it",
@@ -220,6 +218,7 @@ private fun BenchmarkResult(state: BenchmarkUiState.Done) {
                 color = MaterialTheme.colorScheme.primary,
             )
         }
+        Spacer(Modifier.height(8.dp))
     }
 }
 

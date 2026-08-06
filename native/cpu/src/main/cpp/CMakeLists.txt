@@ -4,6 +4,7 @@ project(sv_cpu LANGUAGES CXX)
 
 add_library(sv_cpu_int SHARED
     cpu_integer_jni.cpp
+    fp32_fma_jni.cpp
 )
 
 target_compile_features(sv_cpu_int PRIVATE cxx_std_20)

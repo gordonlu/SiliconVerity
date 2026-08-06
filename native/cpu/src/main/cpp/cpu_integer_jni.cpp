@@ -1,14 +1,7 @@
 #include <jni.h>
-#include <ctime>
-#include <cstdint>
+#include "sv_cpu_internal.h"
 
-static volatile uint64_t g_sink = 0;
-
-static uint64_t monotonic_nanos() {
-    timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000ull + (uint64_t)ts.tv_nsec;
-}
+volatile uint64_t g_sink = 0;
 
 static uint64_t int_alu_loop(uint64_t seed, uint64_t iterations) {
     uint64_t acc = seed ^ 0x9E3779B97F4A7C15ull;

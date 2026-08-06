@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.siliconverity.core.benchmark.BenchmarkEngine
 import com.siliconverity.core.storage.RunManifestStore
 import com.siliconverity.feature.hardware.BenchmarkUiState
+import com.siliconverity.feature.hardware.RunResult
 import com.siliconverity.nativecpu.CpuIntegerWorkload
+import com.siliconverity.nativecpu.Fp32FmaWorkload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +20,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
 
     private val env = AndroidBenchmarkEnvironment(application)
     private val engine = BenchmarkEngine({ System.nanoTime() }, env)
-    private val workload = CpuIntegerWorkload()
+    private val workloads = listOf(CpuIntegerWorkload(), Fp32FmaWorkload())
     private val store = RunManifestStore(File(application.filesDir, "runs"))
 
     private val _state = MutableStateFlow<BenchmarkUiState>(BenchmarkUiState.Idle)
@@ -27,16 +29,19 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     fun run() {
         viewModelScope.launch(Dispatchers.Default) {
             _state.value = BenchmarkUiState.Running
-            val result = runCatching { engine.execute(workload) }
-            val manifest = result.getOrNull()
-            val savedPath = manifest?.let {
-                runCatching { store.save(it).name }.getOrNull()
+            val results = mutableListOf<RunResult>()
+            var error: String? = null
+            for (workload in workloads) {
+                val outcome = runCatching { engine.execute(workload) }
+                val manifest = outcome.getOrNull()
+                if (manifest == null) {
+                    error = outcome.exceptionOrNull()?.message
+                    break
+                }
+                val saved = runCatching { store.save(manifest).name }.getOrNull()
+                results += RunResult(manifest, saved)
             }
-            _state.value = BenchmarkUiState.Done(
-                manifest = manifest,
-                error = result.exceptionOrNull()?.message,
-                savedPath = savedPath,
-            )
+            _state.value = BenchmarkUiState.Done(results, error)
         }
     }
 }
