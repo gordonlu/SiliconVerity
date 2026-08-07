@@ -124,10 +124,10 @@ private fun AppShell() {
             navController = nav,
             startDestination = "home",
             modifier = Modifier.weight(1f),
-            enterTransition = { EnterTransition.None },
-            exitTransition = { ExitTransition.None },
-            popEnterTransition = { EnterTransition.None },
-            popExitTransition = { ExitTransition.None },
+            enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
+            exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) },
+            popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
+            popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) },
         ) {
             composable("home") {
                 val lastRun = (benchmarkState as? BenchmarkUiState.Done)

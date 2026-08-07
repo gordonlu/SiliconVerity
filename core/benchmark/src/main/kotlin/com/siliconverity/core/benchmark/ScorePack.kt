@@ -38,6 +38,10 @@ object ScorePackLoader {
     }
 
     fun loadDefault(): ScorePack? = load()
+
+    /** 从 JSON 文本解析 (Android 端 assets 加载用)。 */
+    fun parseJson(text: String): ScorePack? =
+        runCatching { JsonParser.decodeFromString<ScorePack>(text) }.getOrNull()
 }
 
 private val JsonParser = kotlinx.serialization.json.Json {

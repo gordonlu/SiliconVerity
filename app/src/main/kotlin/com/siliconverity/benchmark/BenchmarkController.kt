@@ -289,7 +289,14 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     }
 
     private fun computeScore(results: List<RunResult>): com.siliconverity.core.benchmark.ScoreReport? {
-        val pack = com.siliconverity.core.benchmark.ScorePackLoader.loadDefault()
+        // Android ClassLoader 读不到库内 java resources, 评分包从 assets 加载
+        val pack = runCatching {
+            val stream = appContext.assets.open("scorepacks/svs-1.0.json")
+            val text = stream.bufferedReader().use { it.readText() }
+            com.siliconverity.core.benchmark.ScorePackLoader.parseJson(text)
+        }.getOrNull() ?: runCatching {
+            com.siliconverity.core.benchmark.ScorePackLoader.loadDefault()
+        }.getOrNull()
         android.util.Log.i("SV-Score", "pack=${pack?.scoreVersion} ref-ilp=${pack?.references?.get("cpu.int.ilp")}")
         if (pack == null) return null
         val runs = results.map { it.manifest.toBenchmarkRun() }
