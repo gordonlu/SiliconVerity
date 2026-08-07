@@ -42,4 +42,14 @@ class StorageWorkloadsTest {
         assertEquals(512 * 1024L, workload.runOnce().workUnits)
         dir.deleteRecursively()
     }
+
+    @Test
+    fun randomWriteFsyncWorkloadProducesValidFile() {
+        val dir = newTempDir()
+        val workload = StorageRandomWriteFsyncWorkload(dir, sizeBytes = 512 * 1024)
+        workload.warmUp()
+        assertTrue("correctness after random write+fsync", workload.correctnessCheck().passed)
+        assertTrue("positive throughput", workload.runOnce().throughput > 0)
+        dir.deleteRecursively()
+    }
 }

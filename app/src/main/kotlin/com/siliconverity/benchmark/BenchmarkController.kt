@@ -12,6 +12,7 @@ import com.siliconverity.core.storage.BenchmarkRunStore
 import com.siliconverity.benchmark.storage.StorageReadWorkload
 import com.siliconverity.benchmark.storage.StorageWriteWorkload
 import com.siliconverity.benchmark.storage.StorageDurableWriteWorkload
+import com.siliconverity.benchmark.storage.StorageRandomWriteFsyncWorkload
 import com.siliconverity.nativecpu.CpuIntegerWorkload
 import com.siliconverity.nativecpu.Fp32FmaWorkload
 import com.siliconverity.nativememory.MemoryCopyWorkload
@@ -38,6 +39,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         MemoryCopyWorkload(),
         StorageWriteWorkload(benchDir),
         StorageDurableWriteWorkload(benchDir),
+        StorageRandomWriteFsyncWorkload(benchDir),
         StorageReadWorkload(benchDir),
     )
     private val store = BenchmarkRunStore(application.filesDir)

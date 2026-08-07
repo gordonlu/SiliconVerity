@@ -8,6 +8,7 @@ import com.siliconverity.core.benchmark.Workload
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.RandomAccessFile
 import java.time.Instant
 import java.util.Random
 
@@ -124,15 +125,15 @@ class StorageWriteWorkload(
 
 class StorageDurableWriteWorkload(
     dir: File,
-    sizeBytes: Long = 32 * 1024 * 1024,
+    sizeBytes: Long = 256 * 1024 * 1024,
 ) : StorageWorkload(dir, sizeBytes, "sv_storage_durable.bin"), Workload {
 
     override val spec: BenchmarkSpec = BenchmarkSpec(
         workloadId = "storage.seq_write.durable",
-        workloadVersion = "0.1.0-alpha",
+        workloadVersion = "1.0.0",
         category = "STORAGE",
-        measurementTarget = "durable sequential write throughput (MB/s, incl fdatasync)",
-        algorithm = "write 32MB + FileOutputStream.fd.sync() (fdatasync)",
+        measurementTarget = "durable sequential write throughput (MB/s, incl fdatasync, 256MB 超出页缓存)",
+        algorithm = "write 256MB + FileOutputStream.fd.sync() (fdatasync), 文件大于缓存使计时以真实设备写为主",
         implementationBackend = "Kotlin java.io",
         dataSize = sizeBytes,
         threadPolicy = "single thread",
@@ -143,7 +144,7 @@ class StorageDurableWriteWorkload(
         measurementRepetitions = 7,
         correctnessCheck = "file size + readback checksum",
         invalidationRules = listOf("sync failed", "checksum mismatch"),
-        knownInterferences = listOf("flash controller", "background I/O"),
+        knownInterferences = listOf("flash controller", "GC/WA", "background I/O"),
     )
 
     override fun warmUp() { writeDurable() }
@@ -158,6 +159,87 @@ class StorageDurableWriteWorkload(
     override fun correctnessCheck(): CorrectnessResult {
         val ok = verifyReadback()
         return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "durable write verify failed" else null)
+    }
+}
+
+class StorageRandomWriteFsyncWorkload(
+    dir: File,
+    sizeBytes: Long = 32 * 1024 * 1024,
+) : StorageWorkload(dir, sizeBytes, "sv_storage_random.bin"), Workload {
+
+    override val spec: BenchmarkSpec = BenchmarkSpec(
+        workloadId = "storage.random_write.fsync",
+        workloadVersion = "1.0.0",
+        category = "STORAGE",
+        measurementTarget = "random 4KB write + fdatasync throughput (MB/s, 闪存随机写 + GC 受限)",
+        algorithm = "256 次 4KB 随机偏移写 + 每次 fdatasync (预生成偏移与数据, 只计时写+sync)",
+        implementationBackend = "Kotlin java.io RandomAccessFile",
+        dataSize = sizeBytes,
+        threadPolicy = "single thread",
+        timingMethod = "System.nanoTime around N random writes + fd.sync() each",
+        warmupMinMillis = 500,
+        warmupMaxMillis = 3000,
+        warmupConvergeThreshold = 0.05,
+        measurementRepetitions = 7,
+        correctnessCheck = "file size + 抽查写入块",
+        invalidationRules = listOf("write failed", "verify mismatch"),
+        knownInterferences = listOf("flash GC/WA", "background I/O"),
+    )
+
+    private val blockSize = 4096
+    private val blockCount = (sizeBytes / blockSize).toInt()
+    private val writesPerRound = 256
+    private var offsets = IntArray(0)
+    private var block = ByteArray(blockSize)
+    private var warmed = false
+
+    private fun prepare() {
+        ensureData()
+        writeBuffered()
+        val r = java.util.Random(0xBEEF)
+        offsets = IntArray(writesPerRound) { r.nextInt(blockCount) }
+        r.nextBytes(block)
+    }
+
+    private fun runRound() {
+        RandomAccessFile(file, "rw").use { raf ->
+            for (i in 0 until writesPerRound) {
+                raf.seek(offsets[i].toLong() * blockSize)
+                raf.write(block)
+                raf.fd.sync()
+            }
+        }
+    }
+
+    override fun warmUp() {
+        if (!warmed) { prepare(); warmed = true }
+        runRound()
+    }
+
+    override fun runOnce(): Sample {
+        val t0 = System.nanoTime()
+        runRound()
+        val t1 = System.nanoTime()
+        val bytes = writesPerRound * blockSize.toLong()
+        return Sample(index = -1, workUnits = bytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
+    }
+
+    override fun correctnessCheck(): CorrectnessResult {
+        if (file.length() != sizeBytes) {
+            return CorrectnessResult(passed = false, kind = ChecksumKind.EXACT, finite = true, reason = "file size mismatch")
+        }
+        // 抽查: 读回若干写入偏移, 应与 block 一致
+        var ok = true
+        val probe = IntArray(minOf(8, offsets.size)) { offsets[it] }
+        RandomAccessFile(file, "r").use { raf ->
+            val buf = ByteArray(blockSize)
+            for (off in probe) {
+                raf.seek(off.toLong() * blockSize)
+                raf.readFully(buf)
+                if (!buf.contentEquals(block)) { ok = false; break }
+            }
+        }
+        return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "random write verify mismatch" else null)
     }
 }
 
