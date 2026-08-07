@@ -106,6 +106,7 @@ fun MemoryLatencyResult.toBenchmarkRun(): BenchmarkRun {
     return BenchmarkRun(
         identity = RunIdentity(
             runId = runId,
+            sessionId = sessionId,
             benchmarkProtocolVersion = "0.1.0",
             workloadId = "mem.latency.curve",
             workloadVersion = "0.1.0-alpha",

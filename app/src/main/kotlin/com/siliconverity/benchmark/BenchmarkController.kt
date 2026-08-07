@@ -125,6 +125,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                                         androidVersion = env.androidVersion,
                                         abi = env.abi,
                                         points = latency.getOrThrow(),
+                                        sessionId = sessionId,
                                     ).toBenchmarkRun(),
                                 )
                             }

@@ -14,4 +14,5 @@ data class MemoryLatencyResult(
     val androidVersion: String,
     val abi: String,
     val points: List<LatencyPoint>,
+    val sessionId: String = "",
 )

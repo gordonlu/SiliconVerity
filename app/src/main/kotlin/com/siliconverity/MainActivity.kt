@@ -220,6 +220,7 @@ private fun AppShell() {
                     onOpenRun = { runId -> nav.navigate("brun/$runId") },
                     onClear = { historyVm.clear() },
                     onCompare = { nav.navigate("compare") },
+                    onRefresh = { historyVm.load() },
                 )
             }
             composable(
