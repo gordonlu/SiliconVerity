@@ -7,6 +7,8 @@ object WorkloadFormat {
 
     fun isStorage(workloadId: String): Boolean = workloadId.startsWith("storage.")
 
+    fun isMixedCompression(workloadId: String): Boolean = workloadId.startsWith("cpu.compress")
+
     fun isMemoryBandwidth(workloadId: String): Boolean = workloadId.startsWith("mem.bandwidth")
 
     fun isVulkanFp32(workloadId: String): Boolean = workloadId.startsWith("vulkan.fp32")
@@ -16,6 +18,7 @@ object WorkloadFormat {
     fun unit(workloadId: String): String = when {
         isFloatingPoint(workloadId) -> "GFLOPS"
         isStorage(workloadId) -> "MB/s"
+        isMixedCompression(workloadId) -> "MB/s"
         isMemoryBandwidth(workloadId) -> "GB/s"
         isVulkanFp32(workloadId) -> "GFLOPS"
         isVulkanBuffer(workloadId) -> "GB/s"
@@ -25,6 +28,7 @@ object WorkloadFormat {
     fun scale(workloadId: String, value: Double): Double = when {
         isFloatingPoint(workloadId) -> value / 1_000_000_000.0
         isStorage(workloadId) -> value / 1_000_000.0
+        isMixedCompression(workloadId) -> value / 1_000_000.0
         isMemoryBandwidth(workloadId) -> value / 1_000_000_000.0
         isVulkanFp32(workloadId) -> value / 1_000_000_000.0
         isVulkanBuffer(workloadId) -> value / 1_000_000_000.0

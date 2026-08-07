@@ -6,6 +6,9 @@ add_library(sv_cpu_int SHARED
     cpu_integer_jni.cpp
     fp32_fma_jni.cpp
     cpu_features_jni.cpp
+    int_branch_jni.cpp
+    compress_jni.cpp
+    multithread_jni.cpp
 )
 
 target_compile_features(sv_cpu_int PRIVATE cxx_std_20)

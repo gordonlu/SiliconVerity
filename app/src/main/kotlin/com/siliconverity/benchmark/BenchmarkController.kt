@@ -29,6 +29,9 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     private val workloads: List<Workload> = listOf(
         CpuIntegerWorkload(),
         Fp32FmaWorkload(),
+        com.siliconverity.nativecpu.IntBranchWorkload(),
+        com.siliconverity.nativecpu.CompressionWorkload(),
+        com.siliconverity.nativecpu.MultithreadWorkload(),
         MemoryReadWorkload(),
         MemoryCopyWorkload(),
         StorageWriteWorkload(benchDir),
