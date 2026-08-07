@@ -15,6 +15,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
@@ -33,6 +34,7 @@ fun HistoryScreen(
     onClear: () -> Unit,
     onCompare: () -> Unit,
 ) {
+    val sessions = remember(state.runs) { groupSessions(state.runs) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -56,7 +58,6 @@ fun HistoryScreen(
                 Text("尚无运行记录。", style = MaterialTheme.typography.bodyMedium)
             }
             else -> {
-                val sessions = groupSessions(state.runs)
                 sessions.forEach { session ->
                     item(key = "h-${session.id}") {
                         Column(modifier = Modifier.padding(top = SvSpacing.Sm, bottom = SvSpacing.Xs)) {
@@ -83,17 +84,18 @@ fun HistoryScreen(
 }
 
 private fun groupSessions(runs: List<RunManifest>): List<Session> {
-    val sessions = mutableListOf<Session>()
+    val groups = LinkedHashMap<String, MutableList<RunManifest>>()
     for (run in runs) {
         val key = run.sessionId.ifEmpty { run.runId }
-        if (sessions.isNotEmpty() && sessions.last().id == key) {
-            sessions[sessions.lastIndex] = sessions.last().let { Session(it.id, it.header, it.runs + run) }
-        } else {
-            val header = run.startedAt.ifEmpty { key.take(8) }
-            sessions += Session(key, header, listOf(run))
-        }
+        groups.getOrPut(key) { mutableListOf() }.add(run)
     }
-    return sessions
+    return groups.map { (id, groupedRuns) ->
+        Session(
+            id = id,
+            header = groupedRuns.first().startedAt.ifEmpty { id.take(8) },
+            runs = groupedRuns,
+        )
+    }
 }
 
 @Composable

@@ -3,6 +3,8 @@ package com.siliconverity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -85,6 +87,10 @@ private fun AppShell() {
             navController = nav,
             startDestination = "home",
             modifier = Modifier.weight(1f),
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None },
         ) {
             composable("home") {
                 val lastRun = (benchmarkState as? BenchmarkUiState.Done)
@@ -141,7 +147,6 @@ private fun AppShell() {
             composable("history") {
                 val historyVm: HistoryViewModel = viewModel()
                 val historyState by historyVm.state.collectAsStateWithLifecycle()
-                androidx.compose.runtime.LaunchedEffect(Unit) { historyVm.load() }
                 HistoryScreen(
                     historyState,
                     onOpenRun = { runId -> nav.navigate("run/$runId") },
