@@ -27,6 +27,11 @@ class SustainedResultStore(runsDir: File) {
             ?.mapNotNull { loadFile(it) }
             ?: emptyList()
 
+    fun clear() {
+        dir.listFiles { f -> f.isFile && f.name.startsWith("sustained_") && f.extension.equals("json", ignoreCase = true) }
+            ?.forEach { it.delete() }
+    }
+
     private fun loadFile(file: File): SustainedResult? = runCatching {
         json.decodeFromString<SustainedResult>(file.readText())
     }.getOrNull()

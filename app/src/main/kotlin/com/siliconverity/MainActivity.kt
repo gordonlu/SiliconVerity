@@ -45,6 +45,7 @@ import com.siliconverity.feature.hardware.HardwareViewModel
 import com.siliconverity.feature.home.HomeScreen
 import com.siliconverity.feature.history.HistoryScreen
 import com.siliconverity.feature.history.HistoryViewModel
+import com.siliconverity.feature.history.BenchmarkRunDetailScreen
 import com.siliconverity.feature.history.CompareScreen
 import com.siliconverity.feature.history.CompareViewModel
 import com.siliconverity.feature.history.RunDetailScreen
@@ -149,10 +150,17 @@ private fun AppShell() {
                 val historyState by historyVm.state.collectAsStateWithLifecycle()
                 HistoryScreen(
                     historyState,
-                    onOpenRun = { runId -> nav.navigate("run/$runId") },
+                    onOpenRun = { runId -> nav.navigate("brun/$runId") },
                     onClear = { historyVm.clear() },
                     onCompare = { nav.navigate("compare") },
                 )
+            }
+            composable(
+                route = "brun/{runId}",
+                arguments = listOf(navArgument("runId") { type = NavType.StringType }),
+            ) { entry ->
+                val runId = entry.arguments?.getString("runId") ?: ""
+                BenchmarkRunDetailScreen(runId = runId, onBack = { nav.popBackStack() })
             }
             composable("compare") {
                 val compareVm: CompareViewModel = viewModel()

@@ -26,6 +26,17 @@ class MemoryLatencyResultStore(runsDir: File) {
             ?.maxByOrNull { it.lastModified() }
             ?.let { loadFile(it) }
 
+    fun list(): List<MemoryLatencyResult> =
+        dir.listFiles { f -> f.isFile && f.name.startsWith("latency_") && f.extension.equals("json", ignoreCase = true) }
+            ?.sortedByDescending { it.lastModified() }
+            ?.mapNotNull { loadFile(it) }
+            ?: emptyList()
+
+    fun clear() {
+        dir.listFiles { f -> f.isFile && f.name.startsWith("latency_") && f.extension.equals("json", ignoreCase = true) }
+            ?.forEach { it.delete() }
+    }
+
     private fun loadFile(file: File): MemoryLatencyResult? = runCatching {
         json.decodeFromString<MemoryLatencyResult>(file.readText())
     }.getOrNull()

@@ -3,8 +3,8 @@ package com.siliconverity.feature.history
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.siliconverity.core.benchmark.RunManifest
-import com.siliconverity.core.storage.RunManifestStore
+import com.siliconverity.core.benchmark.BenchmarkRun
+import com.siliconverity.core.storage.BenchmarkRunStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,12 +14,16 @@ import java.io.File
 
 data class HistoryUiState(
     val loading: Boolean = true,
-    val runs: List<RunManifest> = emptyList(),
+    val runs: List<BenchmarkRun> = emptyList(),
 )
 
 class HistoryViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val store = RunManifestStore(File(application.filesDir, "runs"))
+    private val store = BenchmarkRunStore(
+        runsDir = File(application.filesDir, "runs"),
+        sustainedDir = File(application.filesDir, "sustained"),
+        latencyDir = File(application.filesDir, "latency"),
+    )
 
     private val _state = MutableStateFlow(HistoryUiState())
     val state: StateFlow<HistoryUiState> = _state.asStateFlow()

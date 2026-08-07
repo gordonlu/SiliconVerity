@@ -15,17 +15,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import com.siliconverity.core.benchmark.RunManifest
+import com.siliconverity.core.benchmark.BenchmarkRun
 import com.siliconverity.core.benchmark.ValidityLevel
-import com.siliconverity.core.benchmark.WorkloadFormat
+import com.siliconverity.core.benchmark.primaryMetric
 import com.siliconverity.core.designsystem.SvSpacing
 
-private data class Session(val id: String, val header: String, val runs: List<RunManifest>)
+private data class Session(val id: String, val header: String, val runs: List<BenchmarkRun>)
 
 @Composable
 fun HistoryScreen(
@@ -35,6 +36,7 @@ fun HistoryScreen(
     onCompare: () -> Unit,
 ) {
     val sessions = remember(state.runs) { groupSessions(state.runs) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -74,8 +76,8 @@ fun HistoryScreen(
                             )
                         }
                     }
-                    items(session.runs, key = { "r-${it.runId}" }) { m ->
-                        RunRow(m, onOpenRun)
+                    items(session.runs, key = { "r-${it.identity.runId}" }) { run ->
+                        RunRow(run, onOpenRun)
                     }
                 }
             }
@@ -83,10 +85,10 @@ fun HistoryScreen(
     }
 }
 
-private fun groupSessions(runs: List<RunManifest>): List<Session> {
-    val groups = LinkedHashMap<String, MutableList<RunManifest>>()
+private fun groupSessions(runs: List<BenchmarkRun>): List<Session> {
+    val groups = LinkedHashMap<String, MutableList<BenchmarkRun>>()
     for (run in runs) {
-        val key = run.sessionId.ifEmpty { run.runId }
+        val key = run.identity.sessionId.ifEmpty { run.identity.runId }
         groups.getOrPut(key) { mutableListOf() }.add(run)
     }
     return groups.map { (id, groupedRuns) ->
@@ -99,9 +101,9 @@ private fun groupSessions(runs: List<RunManifest>): List<Session> {
 }
 
 @Composable
-private fun RunRow(manifest: RunManifest, onOpenRun: (String) -> Unit) {
+private fun RunRow(run: BenchmarkRun, onOpenRun: (String) -> Unit) {
     Surface(
-        onClick = { onOpenRun(manifest.runId) },
+        onClick = { onOpenRun(run.identity.runId) },
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surface,
         modifier = Modifier.fillMaxWidth(),
@@ -110,22 +112,19 @@ private fun RunRow(manifest: RunManifest, onOpenRun: (String) -> Unit) {
         Column(modifier = Modifier.padding(SvSpacing.Md)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    manifest.workloadId,
+                    run.identity.workloadId,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
-                ValidityChip(manifest.validityLevel)
+                ValidityChip(run.validity.stability)
             }
             Text(
-                "%.2f %s".format(
-                    WorkloadFormat.scale(manifest.workloadId, manifest.median),
-                    WorkloadFormat.unit(manifest.workloadId),
-                ),
+                run.primaryMetric(),
                 style = MaterialTheme.typography.headlineMedium,
                 fontFamily = FontFamily.Monospace,
             )
             Text(
-                "CV %.4f".format(manifest.cv),
+                "CV %.4f".format(run.validity.robustCv),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
