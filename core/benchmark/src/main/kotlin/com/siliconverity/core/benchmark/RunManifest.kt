@@ -40,6 +40,7 @@ data class RunManifest(
     val outlierCount: Int = 0,
     val correctnessStatus: Boolean,
     val correctness: CorrectnessResult? = null,
+    val protocol: ProtocolSnapshot? = null,
     val validityLevel: ValidityLevel,
     val checksumKind: ChecksumKind? = null,
     val thermalTimeline: List<ThermalSample> = emptyList(),

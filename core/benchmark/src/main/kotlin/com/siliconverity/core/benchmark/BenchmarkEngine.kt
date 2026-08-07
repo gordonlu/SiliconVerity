@@ -30,28 +30,38 @@ class BenchmarkEngine(
         val warmupSamples = mutableListOf<Sample>()
         val warmupDeadlineMs = spec.warmupMaxMillis
         val warmupStart = monotonicClockNanos()
+        val recent = ArrayDeque<Double>()
 
-        var lastWindow = 0.0
         var stable = false
         while (true) {
             val sample = workload.runOnce()
             warmupSamples.add(sample)
+            recent.addLast(sample.throughput)
+            if (recent.size > 5) recent.removeFirst()
             val elapsedMs = (monotonicClockNanos() - warmupStart) / 1_000_000
-            if (elapsedMs >= spec.warmupMinMillis) {
-                val ratio = if (lastWindow > 0) kotlin.math.abs(sample.throughput - lastWindow) / lastWindow else 1.0
-                if (ratio < spec.warmupConvergeThreshold) {
+            if (elapsedMs >= spec.warmupMinMillis && recent.size >= 5) {
+                val wcv = Statistics.cv(recent.toList())
+                if (!wcv.isNaN() && wcv < spec.warmupConvergeThreshold) {
                     stable = true
                     break
                 }
             }
-            lastWindow = sample.throughput
             if (elapsedMs >= warmupDeadlineMs) break
         }
 
+        // 自适应 5/7/11: 5 轮后若稳定(CV<=stableCv)则停, 否则扩到 7, 再到 11
         val measurementSamples = mutableListOf<Sample>()
-        repeat(protocol.measurementRecommendedSamples) { idx ->
-            val s = workload.runOnce()
-            measurementSamples.add(s.copy(index = idx))
+        val sampleTargets = listOf(
+            protocol.measurementMinSamples,
+            protocol.measurementRecommendedSamples,
+            protocol.measurementMaxSamples,
+        )
+        for (target in sampleTargets) {
+            while (measurementSamples.size < target) {
+                measurementSamples.add(workload.runOnce().copy(index = measurementSamples.size))
+            }
+            val mcv = Statistics.cv(measurementSamples.map { it.throughput })
+            if (!mcv.isNaN() && mcv <= protocol.stableCvThreshold) break
         }
 
         val correctness = workload.correctnessCheck()
@@ -103,6 +113,17 @@ class BenchmarkEngine(
             outlierCount = summary.outlierCount,
             correctnessStatus = correctnessOk,
             correctness = correctness,
+            protocol = ProtocolSnapshot(
+                protocolVersion = protocol.protocolVersion,
+                warmupMinSeconds = protocol.warmupMinSeconds,
+                warmupMaxSeconds = protocol.warmupMaxSeconds,
+                warmupConvergeThreshold = protocol.warmupConvergeThreshold,
+                measurementSamplesActual = measurementSamples.size,
+                stableCvThreshold = protocol.stableCvThreshold,
+                variableCvThreshold = protocol.variableCvThreshold,
+                targetRoundMillis = protocol.targetRoundMillis,
+                provisional = protocol.provisional,
+            ),
             validityLevel = validity,
             checksumKind = workload.checksumKind,
             thermalTimeline = listOf(
