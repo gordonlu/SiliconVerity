@@ -25,6 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -60,10 +61,10 @@ fun ResultScreen(
         contentPadding = PaddingValues(
             start = SvSpacing.PageHorizontal,
             end = SvSpacing.PageHorizontal,
-            top = SvSpacing.Md,
-            bottom = SvSpacing.Md,
+            top = SvSpacing.Sm,
+            bottom = SvSpacing.Sm,
         ),
-        verticalArrangement = Arrangement.spacedBy(SvSpacing.Md),
+        verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
@@ -77,7 +78,7 @@ fun ResultScreen(
                     Text(stringResource(R.string.home_sv_performance), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         "%,d".format(score.overallScore ?: 0),
-                        style = MaterialTheme.typography.displayLarge,
+                        style = MaterialTheme.typography.displayMedium,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                     )
@@ -138,31 +139,39 @@ fun ResultScreen(
             }
         }
         item {
-            Spacer(Modifier.height(SvSpacing.Sm))
+            Spacer(Modifier.height(SvSpacing.Xs))
             Button(
                 onClick = onRunAgain,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().height(48.dp),
                 shape = MaterialTheme.shapes.small,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = SvColors.Background,
                 ),
             ) { Text(stringResource(R.string.result_run_again), fontWeight = FontWeight.SemiBold) }
-            Spacer(Modifier.height(SvSpacing.Sm))
+            Spacer(Modifier.height(SvSpacing.Xs))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SvSpacing.Sm)) {
                 OutlinedButton(
                     onClick = onHistory,
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.weight(1f).height(44.dp),
                     shape = MaterialTheme.shapes.small,
                 ) { Text(stringResource(R.string.result_history), fontWeight = FontWeight.SemiBold) }
                 OutlinedButton(
                     onClick = onShare,
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.weight(1f).height(44.dp),
                     shape = MaterialTheme.shapes.small,
                 ) { Text(stringResource(R.string.result_share), fontWeight = FontWeight.SemiBold) }
             }
         }
     }
+}
+
+/** 分类协调色: CPU 蓝 / GPU 紫 / Memory 青 / I/O 琥珀 (暗色友好)。 */
+private fun categoryColor(category: BenchmarkCategory): Color = when (category) {
+    BenchmarkCategory.CPU -> Color(0xFF8AB4F8)
+    BenchmarkCategory.GPU -> Color(0xFFD7AEFB)
+    BenchmarkCategory.MEMORY -> Color(0xFF7FE0C3)
+    BenchmarkCategory.APP_IO -> Color(0xFFFFCC80)
 }
 
 /** 分类分 (index × 10 展示, 参考水平 = 10,000) + 静态条。 */
@@ -172,34 +181,36 @@ private fun CategoryScoreRow(
     categoryScore: Int?,
     hardwareFacts: List<HardwareFact>,
 ) {
+    val color = categoryColor(category)
     SvPanel(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(SvSpacing.Md)) {
+        Column(modifier = Modifier.padding(SvSpacing.Sm)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     stringResource(SvWorkloads.categoryNameRes(category)),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
+                    color = color,
                 )
                 Text(
                     categoryScore?.let { "%,d".format(it * 10) } ?: "—",
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Medium,
                 )
             }
-            Spacer(Modifier.height(SvSpacing.Xs))
+            Spacer(Modifier.height(2.dp))
             val fraction = (categoryScore ?: 0) * 10f / 20_000f
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
+                    .height(4.dp)
                     .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.small),
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(fraction.coerceIn(0f, 1f))
-                        .height(6.dp)
-                        .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.small),
+                        .height(4.dp)
+                        .background(color, MaterialTheme.shapes.small),
                 )
             }
         }
