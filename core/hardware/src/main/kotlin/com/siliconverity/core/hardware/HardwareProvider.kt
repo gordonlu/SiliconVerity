@@ -8,9 +8,12 @@ import java.time.Instant
 class HardwareProvider(private val context: Context) {
 
     private val collectors: List<HardwareCollector> = listOf(
+        DeviceCollector(),
         SocCollector(),
         CpuCollector(),
+        CpuUsageCollector(),
         MemoryCollector(),
+        BatteryCollector(),
         GpuCollector(),
         StorageCollector(),
         ThermalCollector(),

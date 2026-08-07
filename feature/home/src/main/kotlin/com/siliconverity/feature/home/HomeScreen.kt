@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.siliconverity.core.benchmark.BenchmarkUiState
@@ -37,6 +38,7 @@ import com.siliconverity.core.benchmark.WorkloadFormat
 import com.siliconverity.core.designsystem.SvColors
 import com.siliconverity.core.designsystem.SvPanel
 import com.siliconverity.core.designsystem.SvSpacing
+import com.siliconverity.core.designsystem.SvThermalStatus
 import com.siliconverity.core.model.HardwareFact
 
 @Composable
@@ -137,22 +139,36 @@ private fun HeroTitle(running: Boolean) {
 
 @Composable
 private fun MetricMatrix(facts: List<HardwareFact>) {
-    val cpu = factValue(facts, "cpu.cores.configured") ?: "—"
-    val mem = bytesToGb(factValue(facts, "memory.availMem"))
-    val storage = bytesToGb(factValue(facts, "storage.fs.total"))
-    val thermal = factValue(facts, "thermal.status") ?: "—"
+    val cpuLoad = factValue(facts, "cpu.usage")?.toDoubleOrNull()?.let { "%.0f%%".format(it) } ?: "—"
+    val cpuCores = factValue(facts, "cpu.cores.configured") ?: "—"
+    val memTotalBytes = factValue(facts, "memory.totalMem")?.toLongOrNull()
+    val memAvailBytes = factValue(facts, "memory.availMem")?.toLongOrNull()
+    val memFree = if (memTotalBytes != null && memAvailBytes != null && memTotalBytes > 0) {
+        "%.0f%%".format(memAvailBytes * 100.0 / memTotalBytes)
+    } else "—"
+    val memTotal = bytesToGb(memTotalBytes?.toString())
+    val storageTotal = bytesToGb(factValue(facts, "storage.fs.total"))
+    val storageAvail = bytesToGb(factValue(facts, "storage.fs.available"))
+    val thermal = factValue(facts, "thermal.status")?.let { SvThermalStatus.short(it) } ?: "—"
+    val batteryTemp = factValue(facts, "battery.temperature")?.toDoubleOrNull()?.let { "%.1f°C".format(it) } ?: "—"
+    val batteryLevel = factValue(facts, "battery.level")?.let { "$it%" } ?: "—"
+    val android = factValue(facts, "device.android_version") ?: "—"
     SvPanel(modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(modifier = Modifier.fillMaxWidth()) {
-                MetricCell(modifier = Modifier.weight(1f), label = "CPU", value = cpu, unit = "CORES")
+                MetricCell(modifier = Modifier.weight(1f), label = "CPU", value = cpuLoad, unit = "LOAD", sub = "$cpuCores CORES")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
-                MetricCell(modifier = Modifier.weight(1f), label = "MEMORY", value = mem, unit = "AVAILABLE")
+                MetricCell(modifier = Modifier.weight(1f), label = "MEMORY", value = memFree, unit = "FREE", sub = "$memTotal TOTAL")
+                VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
+                MetricCell(modifier = Modifier.weight(1f), label = "STORAGE", value = storageTotal, unit = "TOTAL", sub = "$storageAvail FREE")
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
             Row(modifier = Modifier.fillMaxWidth()) {
-                MetricCell(modifier = Modifier.weight(1f), label = "STORAGE", value = storage, unit = "TOTAL")
-                VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
                 MetricCell(modifier = Modifier.weight(1f), label = "THERMAL", value = thermal, unit = "STATUS")
+                VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
+                MetricCell(modifier = Modifier.weight(1f), label = "BATTERY", value = batteryTemp, unit = "TEMP", sub = "$batteryLevel CHG")
+                VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
+                MetricCell(modifier = Modifier.weight(1f), label = "SYSTEM", value = android, unit = "ANDROID")
             }
         }
     }
@@ -164,11 +180,15 @@ private fun androidx.compose.foundation.layout.RowScope.MetricCell(
     label: String,
     value: String,
     unit: String,
+    sub: String? = null,
 ) {
     Column(modifier = modifier.padding(SvSpacing.Md), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium)
         Text(unit, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        sub?.let {
+            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

@@ -35,7 +35,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.siliconverity.core.designsystem.SvFormat
 import com.siliconverity.core.designsystem.SvSpacing
+import com.siliconverity.core.designsystem.SvThermalStatus
 import com.siliconverity.core.model.Confidence
 import com.siliconverity.core.model.HardwareFact
 
@@ -100,13 +102,20 @@ private fun FactCard(fact: HardwareFact) {
                     modifier = Modifier.padding(end = SvSpacing.Sm),
                 )
                 Text(
-                    fact.displayValue ?: "未知",
+                    friendlyDisplay(fact),
                     fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.End,
                     modifier = Modifier.weight(1f),
+                )
+            }
+            if (fact.key == "thermal.status") {
+                Text(
+                    SvThermalStatus.detail(fact.displayValue ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -160,4 +169,21 @@ private fun ConfidenceChip(confidence: Confidence) {
         color = color,
         fontWeight = FontWeight.SemiBold,
     )
+}
+
+/** 把存储/调试用原始值映射为 UI 友好文案 (布尔、字节数、温度、百分比等)。 */
+private fun friendlyDisplay(fact: HardwareFact): String {
+    val v = fact.displayValue ?: return "未知"
+    return when (fact.key) {
+        "thermal.status" -> SvThermalStatus.short(v)
+        "memory.totalMem", "memory.availMem", "memory.threshold",
+        "storage.fs.total", "storage.fs.available", "storage.fs.free", "storage.fs.block_size" ->
+            SvFormat.bytes(v) ?: v
+        "memory.lowMemory" -> if (v == "true") "内存不足" else "正常"
+        "battery.charging" -> if (v == "true") "充电中" else "未充电"
+        "battery.level" -> v.toIntOrNull()?.let { "$it%" } ?: v
+        "battery.temperature" -> v.toDoubleOrNull()?.let { "%.1f°C".format(it) } ?: v
+        "cpu.usage" -> v.toDoubleOrNull()?.let { "%.1f%%".format(it) } ?: v
+        else -> v
+    }
 }
