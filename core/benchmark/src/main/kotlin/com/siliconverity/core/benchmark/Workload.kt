@@ -11,5 +11,6 @@ interface Workload {
 
     fun runOnce(): Sample
 
-    fun correctnessCheck(): Boolean
+    /** 正确性校验: 返回 passed + kind + finite + reason (为 golden vector/reference 铺路)。 */
+    fun correctnessCheck(): CorrectnessResult
 }

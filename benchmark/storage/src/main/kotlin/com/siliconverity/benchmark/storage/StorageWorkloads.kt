@@ -1,6 +1,8 @@
 package com.siliconverity.benchmark.storage
 
 import com.siliconverity.core.benchmark.BenchmarkSpec
+import com.siliconverity.core.benchmark.ChecksumKind
+import com.siliconverity.core.benchmark.CorrectnessResult
 import com.siliconverity.core.benchmark.Sample
 import com.siliconverity.core.benchmark.Workload
 import java.io.File
@@ -87,7 +89,10 @@ class StorageWriteWorkload(
         return Sample(index = -1, workUnits = sizeBytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
     }
 
-    override fun correctnessCheck(): Boolean = file.length() == sizeBytes
+    override fun correctnessCheck(): CorrectnessResult {
+        val ok = file.length() == sizeBytes
+        return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "file size mismatch" else null)
+    }
 
     private fun nextSeed(): Long {
         seedCounter = seedCounter * 6364136223846793005L + 1442695040888963407L
@@ -137,8 +142,11 @@ class StorageReadWorkload(
         return Sample(index = -1, workUnits = sizeBytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
     }
 
-    override fun correctnessCheck(): Boolean {
-        if (file.length() != sizeBytes) return false
-        return readAndChecksum() == expectedChecksum
+    override fun correctnessCheck(): CorrectnessResult {
+        if (file.length() != sizeBytes) {
+            return CorrectnessResult(passed = false, kind = ChecksumKind.EXACT, finite = true, reason = "file size mismatch")
+        }
+        val ok = readAndChecksum() == expectedChecksum
+        return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "checksum mismatch" else null)
     }
 }

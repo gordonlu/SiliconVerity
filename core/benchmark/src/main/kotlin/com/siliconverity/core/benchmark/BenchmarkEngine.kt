@@ -54,7 +54,8 @@ class BenchmarkEngine(
             measurementSamples.add(s.copy(index = idx))
         }
 
-        val correctnessOk = workload.correctnessCheck()
+        val correctness = workload.correctnessCheck()
+        val correctnessOk = correctness.passed
         val summary = Statistics.summarize(measurementSamples)
         val cv = summary.cv
 
@@ -101,6 +102,7 @@ class BenchmarkEngine(
             trendSlope = summary.trendSlope,
             outlierCount = summary.outlierCount,
             correctnessStatus = correctnessOk,
+            correctness = correctness,
             validityLevel = validity,
             checksumKind = workload.checksumKind,
             thermalTimeline = listOf(

@@ -2,6 +2,7 @@ package com.siliconverity.nativecpu
 
 import com.siliconverity.core.benchmark.BenchmarkSpec
 import com.siliconverity.core.benchmark.ChecksumKind
+import com.siliconverity.core.benchmark.CorrectnessResult
 import com.siliconverity.core.benchmark.Sample
 import com.siliconverity.core.benchmark.Workload
 import java.time.Instant
@@ -43,7 +44,10 @@ class IntBranchWorkload : Workload {
         return Sample(index = -1, workUnits = r[0], durationNanos = r[1], timestamp = Instant.now().toString())
     }
 
-    override fun correctnessCheck(): Boolean = nativeCorrectnessCheck()
+    override fun correctnessCheck(): CorrectnessResult {
+        val ok = nativeCorrectnessCheck()
+        return CorrectnessResult(passed = ok, kind = checksumKind, finite = ok, reason = if (!ok) "checksum/determinism" else null)
+    }
 
     private fun nextSeed(): Long {
         seedCounter = seedCounter * 6364136223846793005L + 1442695040888963407L
@@ -88,7 +92,10 @@ class CompressionWorkload : Workload {
         return Sample(index = -1, workUnits = r[0], durationNanos = r[1], timestamp = Instant.now().toString())
     }
 
-    override fun correctnessCheck(): Boolean = nativeCorrectnessCheck()
+    override fun correctnessCheck(): CorrectnessResult {
+        val ok = nativeCorrectnessCheck()
+        return CorrectnessResult(passed = ok, kind = checksumKind, finite = ok, reason = if (!ok) "checksum/determinism" else null)
+    }
 
     private fun nextSeed(): Long {
         seedCounter = seedCounter * 6364136223846793005L + 1442695040888963407L
@@ -136,7 +143,10 @@ class MultithreadWorkload : Workload {
         return Sample(index = -1, workUnits = r[0], durationNanos = r[1], timestamp = Instant.now().toString())
     }
 
-    override fun correctnessCheck(): Boolean = nativeCorrectnessCheck()
+    override fun correctnessCheck(): CorrectnessResult {
+        val ok = nativeCorrectnessCheck()
+        return CorrectnessResult(passed = ok, kind = checksumKind, finite = ok, reason = if (!ok) "checksum/determinism" else null)
+    }
 
     private fun nextSeed(): Long {
         seedCounter = seedCounter * 6364136223846793005L + 1442695040888963407L

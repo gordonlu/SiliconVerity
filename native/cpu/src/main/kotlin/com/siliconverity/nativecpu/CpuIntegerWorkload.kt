@@ -1,6 +1,7 @@
 package com.siliconverity.nativecpu
 
 import com.siliconverity.core.benchmark.BenchmarkSpec
+import com.siliconverity.core.benchmark.CorrectnessResult
 import com.siliconverity.core.benchmark.Sample
 import com.siliconverity.core.benchmark.Workload
 import java.time.Instant
@@ -52,7 +53,10 @@ class CpuIntegerWorkload : Workload {
         )
     }
 
-    override fun correctnessCheck(): Boolean = nativeCorrectnessCheck()
+    override fun correctnessCheck(): CorrectnessResult {
+        val ok = nativeCorrectnessCheck()
+        return CorrectnessResult(passed = ok, kind = checksumKind, finite = ok, reason = if (!ok) "checksum/determinism" else null)
+    }
 
     private fun nextSeed(): Long {
         seedCounter = seedCounter * 6364136223846793005L + 1442695040888963407L

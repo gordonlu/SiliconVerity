@@ -79,4 +79,15 @@ class StatisticsTest {
         // median 3, MAD small; 1000 is a clear outlier
         assertEquals(1, Statistics.outlierCount(listOf(1.0, 2.0, 3.0, 4.0, 1000.0)))
     }
+
+    @Test
+    fun outlierCount_mad_zero_flags_non_median() {
+        // MAD=0 (all 100 except 200): 200 != median(100) -> 1 outlier (原返回 0 漏检)
+        assertEquals(1, Statistics.outlierCount(listOf(100.0, 100.0, 100.0, 100.0, 200.0)))
+    }
+
+    @Test
+    fun relativeTrend_constant_is_zero() {
+        assertEquals(0.0, Statistics.relativeTrend(listOf(100.0, 100.0, 100.0, 100.0)), 1e-9)
+    }
 }

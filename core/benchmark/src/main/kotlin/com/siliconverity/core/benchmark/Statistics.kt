@@ -1,5 +1,6 @@
 package com.siliconverity.core.benchmark
 
+import kotlinx.serialization.Serializable
 import kotlin.math.abs
 
 object Statistics {
@@ -43,13 +44,20 @@ object Statistics {
         return if (den != 0.0) num / den else 0.0
     }
 
-    /** 离群点数：偏离 median 超过 3×MAD。 */
+    /** 离群点数：偏离 median 超过 3×MAD。MAD=0 时把不等于 median 的值视为候选异常。 */
     fun outlierCount(values: List<Double>, center: Double = median(values), m: Double = mad(values, center)): Int {
-        if (m == 0.0) return 0
+        if (m == 0.0) return values.count { it != center }
         val thresh = 3.0 * m
         return values.count { abs(it - center) > thresh }
     }
 
+    /** 相对趋势 (slope/median), 跨 workload 可比; median=0 时返回 0。 */
+    fun relativeTrend(values: List<Double>, center: Double = median(values)): Double {
+        val slope = trendSlope(values)
+        return if (center != 0.0) slope / center else 0.0
+    }
+
+    @Serializable
     data class Summary(
         val median: Double,
         val mad: Double,
@@ -57,6 +65,7 @@ object Statistics {
         val minimum: Double,
         val maximum: Double,
         val trendSlope: Double,
+        val relativeTrend: Double,
         val outlierCount: Int,
         val count: Int,
     )
@@ -72,6 +81,7 @@ object Statistics {
             minimum = min(values),
             maximum = max(values),
             trendSlope = trendSlope(values),
+            relativeTrend = relativeTrend(values, med),
             outlierCount = outlierCount(values, med, m),
             count = values.size,
         )

@@ -120,6 +120,12 @@ class GpuController(application: Application) : AndroidViewModel(application) {
             mad = 0.0,
             cv = cv,
             correctnessStatus = r.checksumValid,
+            correctness = com.siliconverity.core.benchmark.CorrectnessResult(
+                passed = r.checksumValid,
+                kind = if (workloadId.contains("fp32")) ChecksumKind.ULP else ChecksumKind.EXACT,
+                finite = r.checksumValid,
+                reason = r.invalidReason,
+            ),
             validityLevel = validity,
             checksumKind = if (workloadId.contains("fp32")) ChecksumKind.ULP else ChecksumKind.EXACT,
             warnings = if (!valid) listOfNotNull(r.invalidReason) else emptyList(),
