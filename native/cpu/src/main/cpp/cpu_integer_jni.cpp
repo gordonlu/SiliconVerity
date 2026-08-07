@@ -24,12 +24,12 @@ Java_com_siliconverity_nativecpu_CpuIntegerWorkload_nativeProbe(JNIEnv* env, jcl
 }
 
 extern "C" JNIEXPORT jlongArray JNICALL
-Java_com_siliconverity_nativecpu_CpuIntegerWorkload_nativeRunOnce(JNIEnv* env, jclass, jlong seed) {
-    constexpr uint64_t ITERATIONS = 50000000ull;
+Java_com_siliconverity_nativecpu_CpuIntegerWorkload_nativeRunOnce(JNIEnv* env, jclass, jlong seed, jlong iterations) {
+    uint64_t iters = (iterations > 0) ? (uint64_t)iterations : 50000000ull;
     uint64_t t0 = monotonic_nanos();
-    int_alu_loop((uint64_t)seed, ITERATIONS);
+    int_alu_loop((uint64_t)seed, iters);
     uint64_t t1 = monotonic_nanos();
-    jlong out[2] = { (jlong)ITERATIONS, (jlong)(t1 - t0) };
+    jlong out[2] = { (jlong)iters, (jlong)(t1 - t0) };
     jlongArray result = env->NewLongArray(2);
     if (result != nullptr) {
         env->SetLongArrayRegion(result, 0, 2, out);

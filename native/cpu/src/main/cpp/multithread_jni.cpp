@@ -42,12 +42,12 @@ static uint64_t mt_work(uint64_t seed, uint64_t itersPerThread, int threads) {
 }
 
 extern "C" JNIEXPORT jlongArray JNICALL
-Java_com_siliconverity_nativecpu_MultithreadWorkload_nativeRunOnce(JNIEnv* env, jclass, jlong seed) {
+Java_com_siliconverity_nativecpu_MultithreadWorkload_nativeRunOnce(JNIEnv* env, jclass, jlong seed, jlong itersPerThread) {
     int threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
     if (threads < 1) threads = 1;
-    constexpr uint64_t ITERS_PER_THREAD = 8000000ull;
-    uint64_t dur = mt_work((uint64_t)seed, ITERS_PER_THREAD, threads);
-    uint64_t totalOps = (uint64_t)threads * ITERS_PER_THREAD;
+    uint64_t ipt = (itersPerThread > 0) ? (uint64_t)itersPerThread : 8000000ull;
+    uint64_t dur = mt_work((uint64_t)seed, ipt, threads);
+    uint64_t totalOps = (uint64_t)threads * ipt;
     jlong out[2] = { (jlong)totalOps, (jlong)dur };
     jlongArray r = env->NewLongArray(2);
     if (r != nullptr) env->SetLongArrayRegion(r, 0, 2, out);

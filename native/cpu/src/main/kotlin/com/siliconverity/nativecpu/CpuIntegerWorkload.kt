@@ -13,7 +13,7 @@ class CpuIntegerWorkload : Workload {
     }
 
     private external fun nativeProbe(): String
-    private external fun nativeRunOnce(seed: Long): LongArray
+    private external fun nativeRunOnce(seed: Long, iterations: Long): LongArray
     private external fun nativeCorrectnessCheck(): Boolean
 
     val probe: String get() = nativeProbe()
@@ -22,8 +22,8 @@ class CpuIntegerWorkload : Workload {
         workloadId = "cpu.int.alu",
         workloadVersion = "0.1.0-alpha",
         category = "CPU_MICRO",
-        measurementTarget = "integer ALU throughput (ops/s)",
-        algorithm = "hash-like mix of mul/shift/xor over 50M iterations",
+        measurementTarget = "integer ALU throughput (iterations/s, calibrated ~300ms)",
+        algorithm = "hash-like mix of mul/shift/xor, iterations calibrated to target",
         implementationBackend = "NDK C++20 (arm64-v8a)",
         dataSize = 50_000_000L,
         threadPolicy = "single thread, scheduler default",
@@ -37,14 +37,30 @@ class CpuIntegerWorkload : Workload {
         knownInterferences = listOf("thermal throttling", "background load", "scheduler migration"),
     )
 
+    private companion object {
+        const val DEFAULT_ITERATIONS = 50_000_000L
+        const val MIN_ITERATIONS = 5_000_000L
+        const val MAX_ITERATIONS = 5_000_000_000L
+    }
+
+    private var iterations = DEFAULT_ITERATIONS
     private var seedCounter = 0x1234L
 
+    override fun calibrate(targetMillis: Long) {
+        val probe = nativeRunOnce(nextSeed(), DEFAULT_ITERATIONS)
+        val probeMs = probe[1] / 1_000_000.0
+        if (probeMs > 0) {
+            iterations = (DEFAULT_ITERATIONS.toDouble() * targetMillis / probeMs).toLong()
+                .coerceIn(MIN_ITERATIONS, MAX_ITERATIONS)
+        }
+    }
+
     override fun warmUp() {
-        nativeRunOnce(nextSeed())
+        nativeRunOnce(nextSeed(), iterations)
     }
 
     override fun runOnce(): Sample {
-        val r = nativeRunOnce(nextSeed())
+        val r = nativeRunOnce(nextSeed(), iterations)
         return Sample(
             index = -1,
             workUnits = r[0],

@@ -13,4 +13,10 @@ interface Workload {
 
     /** 正确性校验: 返回 passed + kind + finite + reason (为 golden vector/reference 铺路)。 */
     fun correctnessCheck(): CorrectnessResult
+
+    /**
+     * Calibration: 把工作量调整到接近 targetMillis/轮 (每 workload 自校准)。
+     * 固定工作量的 workload (内存/存储/GPU) 可不覆写 (默认 no-op)。
+     */
+    fun calibrate(targetMillis: Long) {}
 }

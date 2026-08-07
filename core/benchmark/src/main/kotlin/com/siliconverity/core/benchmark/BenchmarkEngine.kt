@@ -24,6 +24,7 @@ class BenchmarkEngine(
 
     fun execute(workload: Workload, protocol: BenchmarkProtocol = DefaultBenchmarkProtocol): RunManifest {
         val spec = workload.spec
+        workload.calibrate(protocol.targetRoundMillis.toLong())
         val runStart = monotonicClockNanos()
         val thermalStart = environment.thermalStatusStart
         workload.warmUp()

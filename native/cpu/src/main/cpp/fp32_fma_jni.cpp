@@ -30,13 +30,13 @@ static float fp32_fma_loop(uint64_t seed, uint64_t iterations) {
 }
 
 extern "C" JNIEXPORT jlongArray JNICALL
-Java_com_siliconverity_nativecpu_Fp32FmaWorkload_nativeRunOnce(JNIEnv* env, jclass, jlong seed) {
-    constexpr uint64_t ITERATIONS = 25000000ull;
+Java_com_siliconverity_nativecpu_Fp32FmaWorkload_nativeRunOnce(JNIEnv* env, jclass, jlong seed, jlong iterations) {
+    uint64_t iters = (iterations > 0) ? (uint64_t)iterations : 25000000ull;
     constexpr uint64_t FLOP_PER_ITER = 16ull;
     uint64_t t0 = monotonic_nanos();
-    fp32_fma_loop((uint64_t)seed, ITERATIONS);
+    fp32_fma_loop((uint64_t)seed, iters);
     uint64_t t1 = monotonic_nanos();
-    jlong out[2] = { (jlong)(ITERATIONS * FLOP_PER_ITER), (jlong)(t1 - t0) };
+    jlong out[2] = { (jlong)(iters * FLOP_PER_ITER), (jlong)(t1 - t0) };
     jlongArray result = env->NewLongArray(2);
     if (result != nullptr) {
         env->SetLongArrayRegion(result, 0, 2, out);

@@ -34,13 +34,13 @@ static uint64_t hash_loop(uint64_t seed, uint64_t iterations) {
 }
 
 extern "C" JNIEXPORT jlongArray JNICALL
-Java_com_siliconverity_nativecpu_CompressionWorkload_nativeRunOnce(JNIEnv* env, jclass, jlong seed) {
-    constexpr uint64_t ITERATIONS = 200ull;
+Java_com_siliconverity_nativecpu_CompressionWorkload_nativeRunOnce(JNIEnv* env, jclass, jlong seed, jlong iterations) {
+    uint64_t iters = (iterations > 0) ? (uint64_t)iterations : 200ull;
     const uint64_t N = 256ull * 1024ull;
     uint64_t t0 = monotonic_nanos();
-    hash_loop((uint64_t)seed, ITERATIONS);
+    hash_loop((uint64_t)seed, iters);
     uint64_t t1 = monotonic_nanos();
-    jlong out[2] = { (jlong)(ITERATIONS * N), (jlong)(t1 - t0) }; // workUnits = bytes processed
+    jlong out[2] = { (jlong)(iters * N), (jlong)(t1 - t0) };
     jlongArray r = env->NewLongArray(2);
     if (r != nullptr) env->SetLongArrayRegion(r, 0, 2, out);
     return r;
