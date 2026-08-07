@@ -14,6 +14,9 @@ add_library(sv_cpu_int SHARED
 target_compile_features(sv_cpu_int PRIVATE cxx_std_20)
 target_compile_options(sv_cpu_int PRIVATE -O3 -ffp-contract=fast)
 
+# 整数 ILP workload 保持标量: 防编译器把 8 条链向量化成 NEON
+set_source_files_properties(cpu_integer_jni.cpp PROPERTIES COMPILE_OPTIONS "-fno-vectorize;-fno-slp-vectorize")
+
 find_library(log-lib log)
 
 target_link_libraries(sv_cpu_int

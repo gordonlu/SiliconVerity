@@ -19,11 +19,11 @@ class CpuIntegerWorkload : Workload {
     val probe: String get() = nativeProbe()
 
     override val spec: BenchmarkSpec = BenchmarkSpec(
-        workloadId = "cpu.int.alu",
-        workloadVersion = "0.1.0-alpha",
+        workloadId = "cpu.int.ilp",
+        workloadVersion = "1.0.0",
         category = "CPU_MICRO",
-        measurementTarget = "integer ALU throughput (iterations/s, calibrated ~300ms)",
-        algorithm = "hash-like mix of mul/shift/xor, iterations calibrated to target",
+        measurementTarget = "single-core scalar integer ILP throughput (M chain-updates/s)",
+        algorithm = "8 independent rotl/mul/xor chains, scalar (-fno-vectorize), calibrated ~300ms",
         implementationBackend = "NDK C++20 (arm64-v8a)",
         dataSize = 50_000_000L,
         threadPolicy = "single thread, scheduler default",
