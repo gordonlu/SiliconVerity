@@ -83,17 +83,17 @@ fun HomeScreen(
                     onClick = onOpenSustained,
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
-                ) { Text("SUSTAINED", fontWeight = FontWeight.SemiBold) }
+                ) { Text("SUSTAINED", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 OutlinedButton(
                     onClick = onOpenGpu,
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
-                ) { Text("GPU", fontWeight = FontWeight.SemiBold) }
+                ) { Text("GPU", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 OutlinedButton(
                     onClick = onOpenLatency,
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
-                ) { Text("LATENCY", fontWeight = FontWeight.SemiBold) }
+                ) { Text("LATENCY", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
     }
