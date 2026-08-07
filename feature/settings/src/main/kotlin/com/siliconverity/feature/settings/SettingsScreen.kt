@@ -62,6 +62,25 @@ fun SettingsScreen() {
         item { Kv("applicationId", "com.siliconverity") }
         item { Kv(stringResource(R.string.settings_platform), "Android 16 / API 36") }
 
+        item { Spacer(Modifier.height(SvSpacing.Md)); SectionTitle(stringResource(R.string.settings_language)) }
+        item {
+            val localeManager = context.getSystemService(Context.LOCALE_SERVICE) as? android.app.LocaleManager
+            val currentTags = localeManager?.applicationLocales?.toLanguageTags().orEmpty()
+            val currentZh = !currentTags.startsWith("en", ignoreCase = true)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SvSpacing.Sm)) {
+                androidx.compose.material3.FilterChip(
+                    selected = currentZh,
+                    onClick = { localeManager?.setApplicationLocales(android.os.LocaleList.forLanguageTags("zh-CN")) },
+                    label = { Text(stringResource(R.string.settings_lang_zh)) },
+                )
+                androidx.compose.material3.FilterChip(
+                    selected = !currentZh,
+                    onClick = { localeManager?.setApplicationLocales(android.os.LocaleList.forLanguageTags("en-US")) },
+                    label = { Text(stringResource(R.string.settings_lang_en)) },
+                )
+            }
+        }
+
         item { Spacer(Modifier.height(SvSpacing.Md)); SectionTitle(stringResource(R.string.settings_env)) }
         item { Kv(stringResource(R.string.settings_power_save), if (env.powerSave) stringResource(R.string.settings_on) else stringResource(R.string.settings_off)) }
         item { Kv(stringResource(R.string.settings_charging), env.charging) }
