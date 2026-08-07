@@ -37,11 +37,12 @@ static double chase_median_ns(jlong sizeBytes, jlong accessesPerRound, int round
     }
     uint32_t start = perm[0];
     free(perm);
+    uint32_t cur = start;
 
     std::vector<double> times;
     times.reserve(rounds);
     for (int r = 0; r < rounds; r++) {
-        uint32_t cur = start;
+        cur = start;
         uint64_t t0 = lat_monotonic();
         for (jlong a = 0; a < accessesPerRound; a++) {
             cur = *(uint32_t*)(base + (size_t)cur * STRIDE);
@@ -49,7 +50,7 @@ static double chase_median_ns(jlong sizeBytes, jlong accessesPerRound, int round
         uint64_t t1 = lat_monotonic();
         times.push_back((double)(t1 - t0) / (double)accessesPerRound);
     }
-    lat_sink = start;
+    lat_sink = cur;  // 依赖循环结果, 防止 -O3 消除 chase 循环
     free(base);
 
     if (times.empty()) return -1.0;
