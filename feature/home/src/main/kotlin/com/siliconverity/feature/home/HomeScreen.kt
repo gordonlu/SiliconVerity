@@ -50,14 +50,26 @@ fun HomeScreen(
     lastRun: RunManifest?,
     benchmarkState: BenchmarkUiState,
     onStartBenchmark: () -> Unit,
+    onStopBenchmark: () -> Unit,
     onOpenHardware: () -> Unit,
     onOpenSustained: () -> Unit,
     onOpenGpu: () -> Unit,
     onOpenLatency: () -> Unit,
     onOpenRun: (String) -> Unit,
 ) {
+    when (val state = benchmarkState) {
+        is BenchmarkUiState.Running -> {
+            SessionScreen(state = state, onStop = onStopBenchmark)
+            return
+        }
+        BenchmarkUiState.Scoring -> {
+            CalculatingScreen()
+            return
+        }
+        else -> {}
+    }
     val deviceId = rememberDeviceId()
-    val running = benchmarkState is BenchmarkUiState.Running
+    val running = false
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
@@ -72,10 +84,12 @@ fun HomeScreen(
         item { BrandRow(deviceId, onOpenHardware) }
         item { HeroTitle(running) }
         item { MetricMatrix(hardwareFacts) }
-        item { LastRun(lastRun, onOpenRun) }
-        val score = (benchmarkState as? BenchmarkUiState.Done)?.score
+        val done = benchmarkState as? BenchmarkUiState.Done
+        val score = done?.score
         if (score != null) {
-            item { ScoreCard(score) }
+            item { LastScoreCard(score, done) }
+        } else {
+            item { LastRun(lastRun, onOpenRun) }
         }
         item {
             PrimaryCta(running = running, onClick = onStartBenchmark)
@@ -98,6 +112,56 @@ fun HomeScreen(
                     shape = MaterialTheme.shapes.small,
                 ) { Text(stringResource(R.string.home_latency), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
+        }
+    }
+}
+
+/** 评分计算过渡页 (静态, 短暂)。 */
+@Composable
+private fun CalculatingScreen() {
+    Column(
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(SvSpacing.PageHorizontal),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            stringResource(R.string.result_calculating),
+            style = MaterialTheme.typography.headlineMedium,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun LastScoreCard(
+    score: com.siliconverity.core.benchmark.ScoreReport,
+    done: BenchmarkUiState.Done,
+) {
+    SvPanel(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(SvSpacing.Md)) {
+            Text(stringResource(R.string.home_last_score), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(SvSpacing.Xs))
+            score.overallScore?.let {
+                Text("%,d".format(it), style = MaterialTheme.typography.displayMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            } ?: Text(stringResource(R.string.home_score_not_generated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            val catLine = listOfNotNull(
+                score.cpuScore?.let { "CPU %1$,d".format(it * 10) },
+                score.gpuScore?.let { "GPU %1$,d".format(it * 10) },
+                score.memoryScore?.let { "${stringResource(R.string.home_cat_memory)} %1$,d".format(it * 10) },
+                score.appIoScore?.let { "${stringResource(R.string.home_cat_io)} %1$,d".format(it * 10) },
+            ).joinToString(" · ")
+            if (catLine.isNotEmpty()) {
+                Text(catLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val date = done.sessionStartedAt?.let {
+                SvTime.formatIso(it, stringResource(SvR.string.sv_today), stringResource(SvR.string.sv_yesterday))
+            } ?: ""
+            Text(
+                stringResource(R.string.home_last_score_line, score.overallScore ?: 0, "$date · ${stringResource(SvR.string.sv_validity_stable)}"),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
@@ -142,7 +206,10 @@ private fun HeroTitle(running: Boolean) {
 
 @Composable
 private fun MetricMatrix(facts: List<HardwareFact>) {
-    val cpuSoc = factValue(facts, "soc.model") ?: "—"
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val cpuSoc = factValue(facts, "soc.model")?.let {
+        com.siliconverity.core.hardware.SocNameResolver.displayName(context, it)
+    } ?: "—"
     val cpuCores = factValue(facts, "cpu.cores.configured") ?: "—"
     val memTotalBytes = factValue(facts, "memory.totalMem")?.toLongOrNull()
     val memAvailBytes = factValue(facts, "memory.availMem")?.toLongOrNull()
@@ -274,47 +341,6 @@ private fun PrimaryCta(running: Boolean, onClick: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
-    }
-}
-
-@Composable
-private fun ScoreCard(score: com.siliconverity.core.benchmark.ScoreReport) {
-    SvPanel(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(SvSpacing.Md)) {
-            Text(stringResource(R.string.home_sv_performance), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.height(SvSpacing.Xs))
-            score.overallScore?.let {
-                Text("%,d".format(it), style = MaterialTheme.typography.displayMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            } ?: Text(stringResource(R.string.home_score_not_generated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            Text(
-                stringResource(
-                    R.string.home_score_meta,
-                    score.scoreVersion,
-                    score.referencePackVersion,
-                    score.confidence.level,
-                    score.coveragePercent,
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(SvSpacing.Sm))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.home_metric_cpu), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(score.cpuScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.home_gpu), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(score.gpuScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.home_cat_memory), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(score.memoryScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(stringResource(R.string.home_cat_io), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(score.appIoScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
-            }
-        }
     }
 }
 

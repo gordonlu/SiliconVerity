@@ -40,4 +40,38 @@
     <string name="home_score_meta">Score %1$s · Ref %2$s · Confidence %3$s · Coverage %4$.0f%%</string>
     <string name="home_cat_memory">Memory</string>
     <string name="home_cat_io">App I/O</string>
+
+    <!-- Session page -->
+    <string name="session_badge">SV BENCHMARK</string>
+    <string name="session_perf_test">PERFORMANCE TEST</string>
+    <string name="session_phase_calibrating">CALIBRATING</string>
+    <string name="session_phase_warming">WARMING UP</string>
+    <string name="session_phase_measuring">MEASURING</string>
+    <string name="session_phase_verifying">VERIFYING</string>
+    <string name="session_phase_finalizing">FINALIZING</string>
+    <string name="session_phase_warming_sub">Convergence %1$d / %2$d</string>
+    <string name="session_phase_measuring_sub">Sample %1$d / %2$d</string>
+    <string name="session_status_complete">COMPLETE</string>
+    <string name="session_status_running">RUNNING</string>
+    <string name="session_status_waiting">WAITING</string>
+    <string name="session_env_thermal">THERMAL</string>
+    <string name="session_env_battery">BATTERY</string>
+    <string name="session_env_power">POWER</string>
+    <string name="session_hint">Keep the device still; avoid switching apps during the test</string>
+    <string name="session_stop">STOP</string>
+
+    <!-- Result page -->
+    <string name="result_title">BENCHMARK RESULT</string>
+    <string name="result_calculating">CALCULATING SCORE</string>
+    <string name="result_valid">VALID</string>
+    <string name="result_high_confidence">HIGH CONFIDENCE</string>
+    <string name="result_reference_line">Reference = 10,000 · %1$s</string>
+    <string name="result_run_again">RUN AGAIN</string>
+    <string name="result_history">HISTORY</string>
+    <string name="result_share">SHARE</string>
+    <string name="result_share_text">SiliconVerity SV performance: %1$d (CPU %2$d · GPU %3$d · Memory %4$d · I/O %5$d) %6$s</string>
+
+    <!-- Home last score -->
+    <string name="home_last_score">LAST SCORE</string>
+    <string name="home_last_score_line">%1$d · %2$s</string>
 </resources>

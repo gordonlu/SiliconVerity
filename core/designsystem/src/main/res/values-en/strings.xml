@@ -12,4 +12,43 @@
     <string name="sv_unknown">Unknown</string>
     <string name="sv_yes">Yes</string>
     <string name="sv_no">No</string>
+
+    <!-- workload display names (technical terms, identical in both locales) -->
+    <string name="wl_cat_cpu">CPU</string>
+    <string name="wl_cat_memory">MEMORY</string>
+    <string name="wl_cat_gpu">GPU</string>
+    <string name="wl_cat_io">APP I/O</string>
+    <string name="wl_unknown">UNKNOWN</string>
+    <string name="wl_unknown_desc">—</string>
+
+    <string name="wl_cpu_ilp">INTEGER ILP</string>
+    <string name="wl_cpu_ilp_desc">8 independent integer chains</string>
+    <string name="wl_cpu_fp32">FP32 FMA</string>
+    <string name="wl_cpu_fp32_desc">Vectorized FP32 FMA pipeline</string>
+    <string name="wl_cpu_branch">BRANCH PREDICTION</string>
+    <string name="wl_cpu_branch_desc">Random branch decision stream</string>
+    <string name="wl_cpu_hash">CACHED SERIAL HASH</string>
+    <string name="wl_cpu_hash_desc">Serial SHA-like hash in L1/L2</string>
+    <string name="wl_cpu_mt">MULTITHREAD</string>
+    <string name="wl_cpu_mt_desc">All-core parallel throughput</string>
+    <string name="wl_mem_read">SEQUENTIAL READ</string>
+    <string name="wl_mem_read_desc">Streaming memory read bandwidth</string>
+    <string name="wl_mem_copy">COPY</string>
+    <string name="wl_mem_copy_desc">Read+write copy bandwidth</string>
+    <string name="wl_mem_latency">RANDOM LATENCY</string>
+    <string name="wl_mem_latency_desc">Pointer chase, L1 to RAM latency curve</string>
+    <string name="wl_gpu_fp32_par">FP32 PARALLEL</string>
+    <string name="wl_gpu_fp32_par_desc">Vulkan compute, independent lanes</string>
+    <string name="wl_gpu_fp32_dep">FP32 DEPENDENCY</string>
+    <string name="wl_gpu_fp32_dep_desc">Vulkan compute, serial dependency</string>
+    <string name="wl_gpu_buffer">BUFFER THROUGHPUT</string>
+    <string name="wl_gpu_buffer_desc">Vulkan storage buffer bandwidth</string>
+    <string name="wl_io_buffered">SEQUENTIAL WRITE</string>
+    <string name="wl_io_buffered_desc">Buffered sequential write</string>
+    <string name="wl_io_durable">DURABLE WRITE</string>
+    <string name="wl_io_durable_desc">256 MB sequential durable write</string>
+    <string name="wl_io_fsync">RANDOM WRITE + FSYNC</string>
+    <string name="wl_io_fsync_desc">Random 4 KB writes with fsync</string>
+    <string name="wl_io_read">SEQUENTIAL READ</string>
+    <string name="wl_io_read_desc">Warm file sequential read</string>
 </resources>

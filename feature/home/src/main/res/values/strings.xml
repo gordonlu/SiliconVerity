@@ -40,4 +40,38 @@
     <string name="home_score_meta">评分 %1$s · 参考 %2$s · 可信度 %3$s · 覆盖 %4$.0f%%</string>
     <string name="home_cat_memory">内存</string>
     <string name="home_cat_io">应用 I/O</string>
+
+    <!-- Session 测试页 -->
+    <string name="session_badge">SV BENCHMARK</string>
+    <string name="session_perf_test">性能测试</string>
+    <string name="session_phase_calibrating">校准中</string>
+    <string name="session_phase_warming">预热中</string>
+    <string name="session_phase_measuring">测量中</string>
+    <string name="session_phase_verifying">校验中</string>
+    <string name="session_phase_finalizing">收尾中</string>
+    <string name="session_phase_warming_sub">收敛 %1$d / %2$d</string>
+    <string name="session_phase_measuring_sub">样本 %1$d / %2$d</string>
+    <string name="session_status_complete">完成</string>
+    <string name="session_status_running">进行中</string>
+    <string name="session_status_waiting">等待中</string>
+    <string name="session_env_thermal">热状态</string>
+    <string name="session_env_battery">电池</string>
+    <string name="session_env_power">供电</string>
+    <string name="session_hint">请保持设备静置，测试期间避免切换应用</string>
+    <string name="session_stop">停止</string>
+
+    <!-- 结果页 -->
+    <string name="result_title">基准测试结果</string>
+    <string name="result_calculating">正在计算评分</string>
+    <string name="result_valid">有效</string>
+    <string name="result_high_confidence">高可信</string>
+    <string name="result_reference_line">参考基准 = 10,000 · %1$s</string>
+    <string name="result_run_again">再测一次</string>
+    <string name="result_history">历史</string>
+    <string name="result_share">分享</string>
+    <string name="result_share_text">芯鉴 SV 性能: %1$d 分 (CPU %2$d · GPU %3$d · 内存 %4$d · I/O %5$d) %6$s</string>
+
+    <!-- 首页最近成绩 -->
+    <string name="home_last_score">最近成绩</string>
+    <string name="home_last_score_line">%1$d · %2$s</string>
 </resources>

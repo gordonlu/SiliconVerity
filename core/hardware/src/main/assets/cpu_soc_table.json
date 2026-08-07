@@ -1,0 +1,568 @@
+[
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 820",
+  "code": "MT6896",
+  "gpu": "Mali G57"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 900",
+  "code": "MT6877",
+  "gpu": "Mali G68"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 930",
+  "code": "MT6855",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 1000+",
+  "code": "MT6889",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 1000L",
+  "code": "MT6885Z",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 1050",
+  "code": "MT6879",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 1080",
+  "code": "MT6877",
+  "gpu": "Mali G68"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 1100",
+  "code": "MT6891",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 1200",
+  "code": "MT6893",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 1300",
+  "code": "MT6893",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7020",
+  "code": "MT6855",
+  "gpu": "Mali G57"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7025",
+  "code": "MT6855V",
+  "gpu": "Mali G57"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7030",
+  "code": "MT6879",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7050",
+  "code": "MT6877",
+  "gpu": "Mali G68"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7200",
+  "code": "MT6886",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7200 Ultra",
+  "code": "MT6985",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7300",
+  "code": "MT6878",
+  "gpu": "Mali G615"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7300 Ultra",
+  "code": "MT6878",
+  "gpu": "Mali G615"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 7300X",
+  "code": "Unknown",
+  "gpu": "Mali G615"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8000",
+  "code": "MT6895",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8020",
+  "code": "MT6891",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8050",
+  "code": "MT6893",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8100",
+  "code": "MT6895",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8100 Max",
+  "code": "MT6895",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8200",
+  "code": "MT6896",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8250",
+  "code": "MT6896",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8300 Ultra",
+  "code": "MT6980",
+  "gpu": "Mali G615"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8400 Ultra",
+  "code": "MT6899",
+  "gpu": "Immortalis G720"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 8400 Ultra",
+  "code": "MT6899H",
+  "gpu": "Immortalis G720"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9000",
+  "code": "MT6983",
+  "gpu": "Mali G710"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9000+",
+  "code": "MT8798",
+  "gpu": "Mali G710"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9200",
+  "code": "MT6985",
+  "gpu": "Mali G715"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9200+",
+  "code": "MT6985",
+  "gpu": "Mali G715"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9300",
+  "code": "MT6989",
+  "gpu": "Immortalis G720"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9300+",
+  "code": "MT6989",
+  "gpu": "Immortalis G720"
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9400",
+  "code": "MT6991",
+  "gpu": "Immortalis G925",
+  "max_freq_ghz": 3.626
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9400+",
+  "code": "MT6991",
+  "gpu": "Immortalis G925",
+  "max_freq_ghz": 3.73
+ },
+ {
+  "vendor": "MediaTek",
+  "name": "Dimensity 9500",
+  "code": "MT6993",
+  "gpu": "Mali G1-Ultra"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 990",
+  "code": "Exynos 990",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 1080",
+  "code": "Exynos 1080",
+  "gpu": "Mali G78"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 1280",
+  "code": "Exynos 1280",
+  "gpu": "Mali G68"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 1380",
+  "code": "Exynos 1380",
+  "gpu": "Mali G68"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 1480",
+  "code": "Exynos 1480",
+  "gpu": "Xclipse 530"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 2100",
+  "code": "Exynos 2100",
+  "gpu": "Mali G78"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 2200",
+  "code": "Exynos 2200",
+  "gpu": "Xclipse 920"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 2400",
+  "code": "Exynos 2400",
+  "gpu": "Xclipse 940"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 2500",
+  "code": "s5e9955",
+  "gpu": "Xclipse 950"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 9820",
+  "code": "Exynos 9820",
+  "gpu": "Mali G76"
+ },
+ {
+  "vendor": "Samsung",
+  "name": "Exynos 9825",
+  "code": "Exynos 9825",
+  "gpu": "Mali G76"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 820 5G",
+  "code": "Kirin 820 5G",
+  "gpu": "Mali G52"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 980",
+  "code": "Kirin 980",
+  "gpu": "Mali G76"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 985",
+  "code": "Kirin 985",
+  "gpu": "Mali G77"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 990",
+  "code": "Kirin 990",
+  "gpu": "Mali G76"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 990E",
+  "code": "Kirin 990E",
+  "gpu": "Mali G76"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 8000",
+  "code": "Kirin 8000",
+  "gpu": "Mali G610"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 9000",
+  "code": "Kirin 9000",
+  "gpu": "Mali G78"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 9000E",
+  "code": "Kirin 9000E",
+  "gpu": "Mali G78"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 9000S1",
+  "code": "Kirin 9000S1",
+  "gpu": "Maleoon 910"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 9010",
+  "code": "Kirin 9010",
+  "gpu": "Maleoon 910"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 9010E",
+  "code": "Kirin 9010E",
+  "gpu": "Maleoon 910"
+ },
+ {
+  "vendor": "HiSilicon",
+  "name": "Kirin 9010L",
+  "code": "Kirin 9010L",
+  "gpu": "Maleoon 910"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 6 Gen 1",
+  "code": "SM6450",
+  "gpu": "Adreno 710"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 7 Gen 1",
+  "code": "SM7450",
+  "gpu": "Adreno 644"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 7 Gen 3",
+  "code": "SM7550",
+  "gpu": "Adreno 720"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 7 Gen 4",
+  "code": "SM7750",
+  "gpu": "Adreno 722"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 7+ Gen 2",
+  "code": "SM7475",
+  "gpu": "Adreno 725"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 7+ Gen 3",
+  "code": "SM7675",
+  "gpu": "Adreno 732"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 7s Gen 2",
+  "code": "SM7435",
+  "gpu": "Adreno 710"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 7s Gen 3",
+  "code": "SM7635",
+  "gpu": "Adreno 810"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 7s Gen 4",
+  "code": "SM7635",
+  "gpu": "Adreno 710"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8 Elite",
+  "code": "SM8750",
+  "gpu": "Adreno 830"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8 Elite Gen 5",
+  "code": "SM8850",
+  "gpu": "Adreno 840"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8 Gen 1",
+  "code": "SM8450",
+  "gpu": "Adreno 730"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8 Gen 2",
+  "code": "SM8550",
+  "gpu": "Adreno 740"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8 Gen 3",
+  "code": "SM8650",
+  "gpu": "Adreno 750"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8 Gen 5",
+  "code": "SM8845",
+  "gpu": "Adreno 829"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8+ Gen 1",
+  "code": "SM8475",
+  "gpu": "Adreno 730"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8s Gen 3",
+  "code": "SM8635",
+  "gpu": "Adreno 735"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 8s Gen 4",
+  "code": "SM8735",
+  "gpu": "Adreno 825"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 768G",
+  "code": "SM7250-AC",
+  "gpu": "Adreno 620"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 778G",
+  "code": "SM7325",
+  "gpu": "Adreno 642"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 778G+",
+  "code": "SM7325-AE",
+  "gpu": "Adreno 642"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 780G",
+  "code": "SM7350-AB",
+  "gpu": "Adreno 642"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 782G",
+  "code": "SM7325",
+  "gpu": "Adreno 642"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 855",
+  "code": "SM8150",
+  "gpu": "Adreno 640"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 855+",
+  "code": "SM8150P",
+  "gpu": "Adreno 640"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 860",
+  "code": "SM8150",
+  "gpu": "Adreno 640"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 865",
+  "code": "SM8250",
+  "gpu": "Adreno 650"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 865+",
+  "code": "SM8250-AB",
+  "gpu": "Adreno 650"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 870",
+  "code": "SM8250-AC",
+  "gpu": "Adreno 650"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 888",
+  "code": "SM8350",
+  "gpu": "Adreno 660"
+ },
+ {
+  "vendor": "Qualcomm",
+  "name": "Snapdragon 888+",
+  "code": "SM8350-AC",
+  "gpu": "Adreno 660"
+ },
+ {
+  "vendor": "Unisoc",
+  "name": "Spreadtrum T770",
+  "code": "Spreadtrum T770",
+  "gpu": "Mali G57"
+ },
+ {
+  "vendor": "Unisoc",
+  "name": "Spreadtrum T820",
+  "code": "Spreadtrum T820",
+  "gpu": "Mali G57"
+ }
+]

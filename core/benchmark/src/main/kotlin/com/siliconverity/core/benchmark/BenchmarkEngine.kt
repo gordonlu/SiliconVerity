@@ -22,8 +22,13 @@ class BenchmarkEngine(
         fun runId(): String
     }
 
-    fun execute(workload: Workload, protocol: BenchmarkProtocol = DefaultBenchmarkProtocol): RunManifest {
+    fun execute(
+        workload: Workload,
+        protocol: BenchmarkProtocol = DefaultBenchmarkProtocol,
+        onPhase: PhaseListener? = null,
+    ): RunManifest {
         val spec = workload.spec
+        onPhase?.onPhase(BenchmarkPhase.CALIBRATING, null, null)
         workload.calibrate(protocol.targetRoundMillis.toLong())
         val runStart = monotonicClockNanos()
         val thermalStart = environment.thermalStatusStart
@@ -39,6 +44,7 @@ class BenchmarkEngine(
             warmupSamples.add(sample)
             recent.addLast(sample.throughput)
             if (recent.size > 5) recent.removeFirst()
+            onPhase?.onPhase(BenchmarkPhase.WARMING_UP, recent.size, 5)
             val elapsedMs = (monotonicClockNanos() - warmupStart) / 1_000_000
             if (elapsedMs >= spec.warmupMinMillis && recent.size >= 5) {
                 val wcv = Statistics.cv(recent.toList())
@@ -58,13 +64,16 @@ class BenchmarkEngine(
             protocol.measurementMaxSamples,
         )
         for (target in sampleTargets) {
+            onPhase?.onPhase(BenchmarkPhase.MEASURING, 0, target)
             while (measurementSamples.size < target) {
                 measurementSamples.add(workload.runOnce().copy(index = measurementSamples.size))
+                onPhase?.onPhase(BenchmarkPhase.MEASURING, measurementSamples.size, target)
             }
             val mcv = Statistics.cv(measurementSamples.map { it.throughput })
             if (!mcv.isNaN() && mcv <= protocol.stableCvThreshold) break
         }
 
+        onPhase?.onPhase(BenchmarkPhase.VERIFYING, null, null)
         val correctness = workload.correctnessCheck()
         val correctnessOk = correctness.passed
         val summary = Statistics.summarize(measurementSamples)
@@ -77,6 +86,8 @@ class BenchmarkEngine(
             cv <= protocol.variableCvThreshold -> ValidityLevel.VARIABLE
             else -> ValidityLevel.RETEST_RECOMMENDED
         }
+
+        onPhase?.onPhase(BenchmarkPhase.FINALIZING, null, null)
 
         val warnings = mutableListOf<String>()
         if (!stable) warnings += "warmup did not converge within max time"
