@@ -12,12 +12,14 @@ import androidx.compose.ui.Modifier
 fun SvPanel(
     modifier: Modifier = Modifier,
     border: Boolean = true,
+    translucent: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         modifier = modifier,
         shape = SvShapes.Panel,
-        color = MaterialTheme.colorScheme.surface,
+        color = if (translucent) MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+        else MaterialTheme.colorScheme.surface,
         border = if (border) BorderStroke(SvSpacing.StructureLine, MaterialTheme.colorScheme.outline) else null,
     ) {
         Column(content = content)

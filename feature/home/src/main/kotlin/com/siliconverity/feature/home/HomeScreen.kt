@@ -6,7 +6,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -34,11 +33,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -94,7 +92,7 @@ fun HomeScreen(
     val brand = factValue(hardwareFacts, "device.brand") ?: ""
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (brand.isNotBlank()) BrandWatermark()
+        if (brand.isNotBlank()) BrandWatermark(brand)
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
@@ -148,22 +146,34 @@ fun HomeScreen(
     }
 }
 
-/** 45° 斜向品牌水印背景层: 单个白色 logo 铺满屏幕, 20% 透明度。 */
+/** 品牌水印: 单个巨大品牌文字, 45° 斜向, 白色 20% 透明, 宽度铺满屏幕对角线。 */
 @Composable
-private fun BrandWatermark() {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val diag = kotlin.math.sqrt(
-            maxWidth.value * maxWidth.value + maxHeight.value * maxHeight.value,
-        )
-        Image(
-            painter = painterResource(R.drawable.ic_logo),
-            contentDescription = null,
-            modifier = Modifier
-                .size(diag.dp)
-                .rotate(45f)
-                .align(Alignment.Center),
-            colorFilter = ColorFilter.tint(Color.White.copy(alpha = 0.2f)),
-        )
+private fun BrandWatermark(text: String) {
+    val textMeasurer = rememberTextMeasurer()
+    val layout = textMeasurer.measure(
+        AnnotatedString(text.uppercase()),
+        style = TextStyle(
+            color = Color.White.copy(alpha = 0.20f),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = FontFamily.SansSerif,
+            letterSpacing = 4.sp,
+        ),
+    )
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        // 45° 旋转后水平投影 = L/√2, 取 L ≈ 对角线, 使斜向铺满全屏
+        val scale = (size.width * 1.42f) / layout.size.width
+        rotate(degrees = -45f, pivot = center) {
+            scale(scale, scale, pivot = center) {
+                drawText(
+                    layout,
+                    topLeft = Offset(
+                        center.x - layout.size.width / 2f,
+                        center.y - layout.size.height / 2f,
+                    ),
+                )
+            }
+        }
     }
 }
 
@@ -193,7 +203,7 @@ private fun LastScoreCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
         onClick = onOpenResult,
         border = BorderStroke(SvSpacing.StructureLine, MaterialTheme.colorScheme.outline),
     ) {
@@ -297,7 +307,7 @@ private fun MetricMatrix(facts: List<HardwareFact>) {
     val batteryLevel = factValue(facts, "battery.level")?.let { "$it%" } ?: "—"
     val android = factValue(facts, "device.android_version") ?: "—"
     val brand = factValue(facts, "device.brand") ?: "—"
-    SvPanel(modifier = Modifier.fillMaxWidth()) {
+    SvPanel(modifier = Modifier.fillMaxWidth(), translucent = true) {
         Column {
             Row(modifier = Modifier.fillMaxWidth()) {
                 MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_cpu), value = cpuSoc, unit = stringResource(R.string.home_unit_soc), sub = "$cpuCores ${stringResource(R.string.home_unit_cores)}")
@@ -343,7 +353,7 @@ private fun androidx.compose.foundation.layout.RowScope.MetricCell(
 
 @Composable
 private fun LastRun(lastRun: RunManifest?, onOpenRun: (String) -> Unit) {
-    SvPanel(modifier = Modifier.fillMaxWidth()) {
+    SvPanel(modifier = Modifier.fillMaxWidth(), translucent = true) {
         if (lastRun == null) {
             Column(modifier = Modifier.padding(SvSpacing.Md)) {
                 Text(stringResource(R.string.home_last_run), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

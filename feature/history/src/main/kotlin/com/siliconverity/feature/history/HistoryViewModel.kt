@@ -26,6 +26,16 @@ data class SessionAggregate(
     val total: Int,
 )
 
+/** 按 sessionId 分组 (latency 等独立运行归入自身)。 */
+internal fun groupRunsBySession(runs: List<BenchmarkRun>): List<Pair<String, List<BenchmarkRun>>> {
+    val groups = LinkedHashMap<String, MutableList<BenchmarkRun>>()
+    for (run in runs) {
+        val key = run.identity.sessionId.ifEmpty { run.identity.runId }
+        groups.getOrPut(key) { mutableListOf() }.add(run)
+    }
+    return groups.map { (id, list) -> id to list }
+}
+
 data class HistoryUiState(
     val loading: Boolean = true,
     val runs: List<BenchmarkRun> = emptyList(),
@@ -71,7 +81,10 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private fun groupSessions(runs: List<BenchmarkRun>): List<Pair<String, List<BenchmarkRun>>> {
+    private fun groupSessions(runs: List<BenchmarkRun>): List<Pair<String, List<BenchmarkRun>>> =
+        groupRunsBySession(runs)
+
+    private fun groupRunsBySession(runs: List<BenchmarkRun>): List<Pair<String, List<BenchmarkRun>>> {
         val groups = LinkedHashMap<String, MutableList<BenchmarkRun>>()
         for (run in runs) {
             val key = run.identity.sessionId.ifEmpty { run.identity.runId }
