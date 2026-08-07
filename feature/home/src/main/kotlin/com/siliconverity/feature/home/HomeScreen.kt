@@ -197,8 +197,8 @@ private fun HeroTitle(running: Boolean) {
     val status = if (running) stringResource(R.string.home_status_measuring) else stringResource(R.string.home_status_ready)
     val statusColor = if (running) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
     Column {
-        Text(stringResource(R.string.home_hero_silicon), fontSize = 50.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 44.sp)
-        Text(stringResource(R.string.home_hero_verity), fontSize = 50.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 44.sp)
+        Text(stringResource(R.string.home_hero_silicon), fontSize = 50.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 40.sp)
+        Text(stringResource(R.string.home_hero_verity), fontSize = 50.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 40.sp)
         Spacer(Modifier.height(SvSpacing.Xs))
         Text(stringResource(R.string.home_hero_tagline), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(SvSpacing.Xs))
@@ -270,7 +270,10 @@ private fun androidx.compose.foundation.layout.RowScope.MetricCell(
     unit: String,
     sub: String? = null,
 ) {
-    Column(modifier = modifier.padding(SvSpacing.Md), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(
+        modifier = modifier.padding(horizontal = SvSpacing.Md, vertical = SvSpacing.Sm),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(unit, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
