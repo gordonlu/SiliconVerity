@@ -10,6 +10,12 @@ class DeviceCollector : HardwareCollector {
 
     override fun collect(context: Context): List<CollectedFact> = listOf(
         CollectedFact(
+            key = "device.brand",
+            evidence = listOf(
+                Evidence(SourceType.PUBLIC_API, "Build.BRAND", Build.BRAND),
+            ),
+        ),
+        CollectedFact(
             key = "device.model",
             evidence = listOf(
                 Evidence(SourceType.PUBLIC_API, "Build.MANUFACTURER + Build.MODEL", "${Build.MANUFACTURER} ${Build.MODEL}".trim()),

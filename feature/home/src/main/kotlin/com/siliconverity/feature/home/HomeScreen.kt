@@ -1,6 +1,9 @@
 package com.siliconverity.feature.home
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -25,9 +29,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,9 +87,13 @@ fun HomeScreen(
     }
     val deviceId = rememberDeviceId()
     val running = false
+    val brand = factValue(hardwareFacts, "device.brand") ?: ""
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (brand.isNotBlank()) BrandWatermark(brand)
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
         contentPadding = PaddingValues(
             start = SvSpacing.PageHorizontal,
             end = SvSpacing.PageHorizontal,
@@ -121,6 +138,39 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
                 ) { Text(stringResource(R.string.home_latency), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+        }
+    }
+    }
+}
+
+/** 45° 斜向品牌水印背景层 (20% 透明度, 英文加粗, 平铺拉满屏幕)。 */
+@Composable
+private fun BrandWatermark(text: String) {
+    val color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+    val textMeasurer = rememberTextMeasurer()
+    val layout = textMeasurer.measure(
+        AnnotatedString(text.uppercase()),
+        style = TextStyle(
+            color = color,
+            fontSize = 44.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = FontFamily.SansSerif,
+            letterSpacing = 2.sp,
+        ),
+    )
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        rotate(degrees = 45f, pivot = center) {
+            val step = 200f
+            val span = size.maxDimension * 2f
+            var x = -span
+            while (x < span) {
+                var y = -span
+                while (y < span) {
+                    drawText(layout, topLeft = Offset(x, y))
+                    y += step
+                }
+                x += step
             }
         }
     }
@@ -255,6 +305,7 @@ private fun MetricMatrix(facts: List<HardwareFact>) {
     val batteryTemp = factValue(facts, "battery.temperature")?.toDoubleOrNull()?.let { "%.1f°C".format(it) } ?: "—"
     val batteryLevel = factValue(facts, "battery.level")?.let { "$it%" } ?: "—"
     val android = factValue(facts, "device.android_version") ?: "—"
+    val brand = factValue(facts, "device.brand") ?: "—"
     SvPanel(modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(modifier = Modifier.fillMaxWidth()) {
@@ -272,7 +323,7 @@ private fun MetricMatrix(facts: List<HardwareFact>) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_battery), value = batteryTemp, unit = stringResource(R.string.home_unit_temp), sub = "$batteryLevel ${stringResource(R.string.home_unit_chg)}")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
-                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_system), value = android, unit = stringResource(R.string.home_unit_android))
+                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_system), value = brand, unit = "ANDROID $android")
             }
         }
     }
