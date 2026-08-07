@@ -68,10 +68,16 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                     val saved = runCatching { store.save(manifest.toBenchmarkRun()).name }.getOrNull()
                     results += RunResult(manifest, saved)
                 }
-                _state.value = BenchmarkUiState.Done(results, error)
+                _state.value = BenchmarkUiState.Done(results, error, computeScore(results))
             } finally {
                 BenchmarkRunCoordinator.release()
             }
         }
+    }
+
+    private fun computeScore(results: List<RunResult>): com.siliconverity.core.benchmark.ScoreReport? {
+        val pack = com.siliconverity.core.benchmark.ScorePackLoader.loadDefault() ?: return null
+        val runs = results.map { it.manifest.toBenchmarkRun() }
+        return runCatching { com.siliconverity.core.benchmark.ScoringEngine(pack).score(runs) }.getOrNull()
     }
 }

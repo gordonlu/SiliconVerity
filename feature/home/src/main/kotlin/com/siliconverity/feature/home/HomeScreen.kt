@@ -68,6 +68,10 @@ fun HomeScreen(
         item { HeroTitle(running) }
         item { MetricMatrix(hardwareFacts) }
         item { LastRun(lastRun, onOpenRun) }
+        val score = (benchmarkState as? BenchmarkUiState.Done)?.score
+        if (score != null) {
+            item { ScoreCard(score) }
+        }
         item {
             PrimaryCta(running = running, onClick = onStartBenchmark)
         }
@@ -237,6 +241,41 @@ private fun PrimaryCta(running: Boolean, onClick: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
+    }
+}
+
+@Composable
+private fun ScoreCard(score: com.siliconverity.core.benchmark.ScoreReport) {
+    SvPanel(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(SvSpacing.Md)) {
+            Text("SV PERFORMANCE", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(SvSpacing.Xs))
+            score.overallScore?.let {
+                Text("%,d".format(it), style = MaterialTheme.typography.displayMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            } ?: Text("综合分未生成（有 RETEST/INVALID 或分类缺失）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            Text(
+                "评分 ${score.scoreVersion}  •  参考 ${score.referencePackVersion}  •  可信度 ${score.confidence.level}  •  覆盖 %.0f%%".format(score.coveragePercent),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(SvSpacing.Sm))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("CPU", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(score.cpuScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("GPU", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(score.gpuScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("内存", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(score.memoryScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("应用 I/O", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(score.appIoScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+            }
+        }
     }
 }
 

@@ -1,0 +1,66 @@
+{
+  "scoreVersion": "SVS-1.0",
+  "referencePackVersion": "SV-REF-2026-08-A",
+  "overallWeights": {
+    "CPU": 0.30,
+    "GPU": 0.35,
+    "Memory": 0.20,
+    "AppIO": 0.15
+  },
+  "categories": {
+    "CPU": {
+      "weight": 0.30,
+      "workloads": {
+        "cpu.int.ilp": { "weight": 0.20 },
+        "cpu.fp32.fma": { "weight": 0.20 },
+        "cpu.int.branch": { "weight": 0.15 },
+        "cpu.hash.cached": { "weight": 0.10 },
+        "cpu.multithread": { "weight": 0.35 }
+      }
+    },
+    "GPU": {
+      "weight": 0.35,
+      "workloads": {
+        "vulkan.fp32.independent": { "weight": 0.45 },
+        "vulkan.fp32.dependency": { "weight": 0.30 },
+        "vulkan.buffer.throughput": { "weight": 0.25 }
+      }
+    },
+    "Memory": {
+      "weight": 0.20,
+      "workloads": {
+        "mem.bandwidth.read": { "weight": 0.55 },
+        "mem.bandwidth.copy": { "weight": 0.45 }
+      }
+    },
+    "AppIO": {
+      "weight": 0.15,
+      "workloads": {
+        "storage.seq_write.buffered": { "weight": 0.15 },
+        "storage.seq_write.durable": { "weight": 0.40 },
+        "storage.random_write.fsync": { "weight": 0.25 },
+        "storage.seq_read.warm": { "weight": 0.20 }
+      }
+    }
+  },
+  "references": {
+    "cpu.int.ilp": 0.0,
+    "cpu.fp32.fma": 0.0,
+    "cpu.int.branch": 0.0,
+    "cpu.hash.cached": 0.0,
+    "cpu.multithread": 0.0,
+    "vulkan.fp32.independent": 0.0,
+    "vulkan.fp32.dependency": 0.0,
+    "vulkan.buffer.throughput": 0.0,
+    "mem.bandwidth.read": 0.0,
+    "mem.bandwidth.copy": 0.0,
+    "storage.seq_write.buffered": 0.0,
+    "storage.seq_write.durable": 0.0,
+    "storage.random_write.fsync": 0.0,
+    "storage.seq_read.warm": 0.0
+  },
+  "clampMin": 0.20,
+  "clampMax": 5.00,
+  "multiplier": 10.0,
+  "itemBase": 1000.0
+}
