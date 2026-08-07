@@ -139,16 +139,16 @@ private fun HeroTitle(running: Boolean) {
 
 @Composable
 private fun MetricMatrix(facts: List<HardwareFact>) {
-    val cpuLoad = factValue(facts, "cpu.usage")?.toDoubleOrNull()?.let { "%.0f%%".format(it) } ?: "—"
+    val cpuSoc = factValue(facts, "soc.model") ?: "—"
     val cpuCores = factValue(facts, "cpu.cores.configured") ?: "—"
     val memTotalBytes = factValue(facts, "memory.totalMem")?.toLongOrNull()
     val memAvailBytes = factValue(facts, "memory.availMem")?.toLongOrNull()
     val memFree = if (memTotalBytes != null && memAvailBytes != null && memTotalBytes > 0) {
         "%.0f%%".format(memAvailBytes * 100.0 / memTotalBytes)
     } else "—"
-    val memTotal = bytesToGb(memTotalBytes?.toString())
-    val storageTotal = bytesToGb(factValue(facts, "storage.fs.total"))
-    val storageAvail = bytesToGb(factValue(facts, "storage.fs.available"))
+    val memTotal = bytesHuman(memTotalBytes?.toString())
+    val storageTotal = bytesHuman(factValue(facts, "storage.fs.total"))
+    val storageAvail = bytesHuman(factValue(facts, "storage.fs.available"))
     val thermal = factValue(facts, "thermal.status")?.let { SvThermalStatus.short(it) } ?: "—"
     val batteryTemp = factValue(facts, "battery.temperature")?.toDoubleOrNull()?.let { "%.1f°C".format(it) } ?: "—"
     val batteryLevel = factValue(facts, "battery.level")?.let { "$it%" } ?: "—"
@@ -156,16 +156,18 @@ private fun MetricMatrix(facts: List<HardwareFact>) {
     SvPanel(modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(modifier = Modifier.fillMaxWidth()) {
-                MetricCell(modifier = Modifier.weight(1f), label = "CPU", value = cpuLoad, unit = "LOAD", sub = "$cpuCores CORES")
+                MetricCell(modifier = Modifier.weight(1f), label = "CPU", value = cpuSoc, unit = "SOC", sub = "$cpuCores CORES")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
                 MetricCell(modifier = Modifier.weight(1f), label = "MEMORY", value = memFree, unit = "FREE", sub = "$memTotal TOTAL")
-                VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
-                MetricCell(modifier = Modifier.weight(1f), label = "STORAGE", value = storageTotal, unit = "TOTAL", sub = "$storageAvail FREE")
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
             Row(modifier = Modifier.fillMaxWidth()) {
-                MetricCell(modifier = Modifier.weight(1f), label = "THERMAL", value = thermal, unit = "STATUS")
+                MetricCell(modifier = Modifier.weight(1f), label = "STORAGE", value = storageTotal, unit = "TOTAL", sub = "$storageAvail FREE")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
+                MetricCell(modifier = Modifier.weight(1f), label = "THERMAL", value = thermal, unit = "STATUS")
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
+            Row(modifier = Modifier.fillMaxWidth()) {
                 MetricCell(modifier = Modifier.weight(1f), label = "BATTERY", value = batteryTemp, unit = "TEMP", sub = "$batteryLevel CHG")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
                 MetricCell(modifier = Modifier.weight(1f), label = "SYSTEM", value = android, unit = "ANDROID")
@@ -184,7 +186,7 @@ private fun androidx.compose.foundation.layout.RowScope.MetricCell(
 ) {
     Column(modifier = modifier.padding(SvSpacing.Md), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium)
+        Text(value, style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(unit, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         sub?.let {
             Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -302,7 +304,8 @@ private fun ScoreCard(score: com.siliconverity.core.benchmark.ScoreReport) {
 private fun factValue(facts: List<HardwareFact>, key: String): String? =
     facts.firstOrNull { it.key == key }?.rawValue
 
-private fun bytesToGb(bytes: String?): String {
+private fun bytesHuman(bytes: String?): String {
     val b = bytes?.toLongOrNull() ?: return "—"
+    if (b >= 1_000_000_000_000) return "%.2f TB".format(b / 1_000_000_000_000.0)
     return "%.1f GB".format(b / 1_000_000_000.0)
 }

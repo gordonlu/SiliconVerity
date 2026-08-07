@@ -183,7 +183,6 @@ private fun friendlyDisplay(fact: HardwareFact): String {
         "battery.charging" -> if (v == "true") "充电中" else "未充电"
         "battery.level" -> v.toIntOrNull()?.let { "$it%" } ?: v
         "battery.temperature" -> v.toDoubleOrNull()?.let { "%.1f°C".format(it) } ?: v
-        "cpu.usage" -> v.toDoubleOrNull()?.let { "%.1f%%".format(it) } ?: v
         else -> v
     }
 }
