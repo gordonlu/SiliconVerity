@@ -64,7 +64,7 @@ fun HistoryScreen(
             }
         }
         when {
-            state.loading -> item { CircularProgressIndicator() }
+            state.loading && state.runs.isEmpty() -> item { CircularProgressIndicator() }
             state.runs.isEmpty() -> item {
                 Text(stringResource(R.string.history_empty), style = MaterialTheme.typography.bodyMedium)
             }
