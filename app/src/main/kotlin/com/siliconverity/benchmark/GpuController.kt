@@ -78,7 +78,16 @@ class GpuController(application: Application) : AndroidViewModel(application) {
 
     private fun toManifest(r: NativeGpuResult, workloadId: String, version: String, sessionId: String, nowIso: String): RunManifest {
         val rawThroughput = (r.metricValue ?: 0.0) * 1_000_000_000.0
-        val valid = r.supported && r.checksumValid
+        val tsOk = (r.gpuExecNs ?: 0L) > 0L
+        val metricOk = r.metricValue?.let { it.isFinite() && it > 0.0 } ?: false
+        val valid = r.supported && r.checksumValid && r.invalidReason.isNullOrEmpty() && tsOk && metricOk
+        val cv = r.coefficientOfVariation ?: 1.0
+        val validity = when {
+            !valid -> ValidityLevel.INVALID
+            cv <= 0.03 -> ValidityLevel.STABLE
+            cv <= 0.07 -> ValidityLevel.VARIABLE
+            else -> ValidityLevel.RETEST_RECOMMENDED
+        }
         return RunManifest(
             runId = "${sessionId}_$workloadId",
             sessionId = sessionId,
@@ -109,9 +118,9 @@ class GpuController(application: Application) : AndroidViewModel(application) {
             measurementSamples = emptyList(),
             median = rawThroughput,
             mad = 0.0,
-            cv = r.coefficientOfVariation ?: 0.0,
+            cv = cv,
             correctnessStatus = r.checksumValid,
-            validityLevel = if (valid) ValidityLevel.STABLE else ValidityLevel.INVALID,
+            validityLevel = validity,
             checksumKind = if (workloadId.contains("fp32")) ChecksumKind.ULP else ChecksumKind.EXACT,
             warnings = if (!valid) listOfNotNull(r.invalidReason) else emptyList(),
         )

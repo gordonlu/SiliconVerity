@@ -92,7 +92,7 @@ static void destroyBuffer(VkDevice dev, Buffer& b) {
 struct RoundTimings {
     uint64_t commandRecordingNs = 0;
     uint64_t queueSubmitNs = 0;
-    uint64_t gpuExecNs = 0;          // 0 if timestamp unsupported
+    uint64_t gpuExecNs = 0;
     uint64_t completionWaitNs = 0;
 };
 
@@ -169,7 +169,7 @@ struct Harness {
     bool gpuTimestampUsable() const { return tsValidBits > 0; }
 
     RoundTimings runRound(VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSet descSet,
-                          const void* pcData, uint32_t pcSize, uint32_t groups, uint32_t repeatK,
+                          const void* pcData, uint32_t pcSize, uint32_t groups,
                           VkQueryPool queryPool, VkFence fence, bool useGpuTs) {
         RoundTimings t;
         VkCommandBuffer cmd = VK_NULL_HANDLE;
@@ -190,7 +190,8 @@ struct Harness {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &descSet, 0, nullptr);
             if (pcSize > 0) vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, pcSize, pcData);
-            for (uint32_t i = 0; i < repeatK; i++) vkCmdDispatch(cmd, groups, 1, 1);
+            // K=1: 单次 dispatch, 无跨 dispatch 状态/同步问题
+            vkCmdDispatch(cmd, groups, 1, 1);
             if (useGpuTs) vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 1);
             vkEndCommandBuffer(cmd);
         }
@@ -281,18 +282,17 @@ struct WorkResult {
     std::string vulkanVersion;
     double metricValue = 0;
     std::string metricUnit;
-    uint64_t medianNs = 0;            // median gpuExecNs
+    uint64_t medianNs = 0;
     double cv = 0;
     bool checksumValid = false;
     std::string invalidReason;
-    // submission diagnostics (median per round)
     uint64_t commandRecordingNs = 0;
     uint64_t queueSubmitNs = 0;
     uint64_t gpuExecNs = 0;
     uint64_t completionWaitNs = 0;
     std::string spirvHash;
-    std::string arithType;            // "FP32" or ""
-    std::string arithContract;         // "DEVICE_DEFAULT" or ""
+    std::string arithType;
+    std::string arithContract;
 };
 
 static std::string vkVersionStr(uint32_t v) {
@@ -326,6 +326,16 @@ struct GpuResources {
     }
 };
 
+// 扩展 push constant: iterations + 4 (factor,offset) + vec4Count (dependency 用 A, independent 用 ABCD)
+struct Fp32PC {
+    uint32_t iterations;
+    float factorA, offsetA;
+    float factorB, offsetB;
+    float factorC, offsetC;
+    float factorD, offsetD;
+    uint32_t vec4Count;
+};
+
 static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
     WorkResult r;
     fillBase(r, h);
@@ -337,10 +347,8 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
 
     const uint32_t WG = 64;
     const uint32_t vec4Count = 16384;
-    const uint32_t iterations = 1024;
     const uint32_t groups = vec4Count / WG;
     const VkDeviceSize bufBytes = (VkDeviceSize)vec4Count * 4 * sizeof(float);
-    // scalar FMA per iteration per invocation: dependency=4 (1 vec4), independent=16 (4 vec4)
     const uint32_t fmaPerIter = independent ? 16 : 4;
 
     Buffer io{};
@@ -356,9 +364,16 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
     VkDescriptorSetLayoutBinding binds[1] = {};
     binds[0].binding = 0; binds[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     binds[0].descriptorCount = 1; binds[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    VkPushConstantRange pc{}; pc.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT; pc.offset = 0; pc.size = 16;
-    struct PC { uint32_t iterations; float factor; float offset; uint32_t vec4Count; };
-    PC pcData{iterations, 1.0000001f, 0.0000001f, vec4Count};
+    VkPushConstantRange pc{}; pc.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT; pc.offset = 0; pc.size = sizeof(Fp32PC);
+
+    Fp32PC pcData{};
+    pcData.vec4Count = vec4Count;
+    pcData.factorA = 1.0000001f; pcData.offsetA = 1e-7f;
+    if (independent) {
+        pcData.factorB = 1.0000003f; pcData.offsetB = 2e-7f;
+        pcData.factorC = 1.0000005f; pcData.offsetC = 3e-7f;
+        pcData.factorD = 1.0000007f; pcData.offsetD = 4e-7f;
+    }
 
     GpuResources g;
     const uint32_t* spv = independent ? (const uint32_t*)fp32_independent_spv : (const uint32_t*)fp32_spv;
@@ -380,20 +395,24 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
 
     bool useGpuTs = h.gpuTimestampUsable();
 
-    RoundTimings one = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, 1, g.queryPool, g.fence, useGpuTs);
-    uint64_t oneNs = useGpuTs ? one.gpuExecNs : (one.commandRecordingNs + one.queueSubmitNs + one.completionWaitNs);
-    uint32_t K = 1;
-    if (oneNs > 0) {
+    // calibrate iterations to hit ~targetMs (single dispatch, K=1)
+    pcData.iterations = 1024;
+    RoundTimings one = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+    uint32_t iters = 1024;
+    if (useGpuTs && one.gpuExecNs > 0) {
         uint64_t target = (uint64_t)targetMs * 1000000ull;
-        K = (uint32_t)(target / oneNs); if (K < 1) K = 1; if (K > 4096) K = 4096;
+        iters = (uint32_t)((double)1024.0 * (double)target / (double)one.gpuExecNs);
+        if (iters < 1024) iters = 1024;
+        if (iters > 100000000u) iters = 100000000u;
     }
+    pcData.iterations = iters;
 
     std::vector<uint64_t> gpuTimes, recTimes, subTimes, waitTimes;
     for (int i = 0; i < 3; i++) {
-        h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, K, g.queryPool, g.fence, useGpuTs);
+        h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
     }
     for (int i = 0; i < 7; i++) {
-        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, K, g.queryPool, g.fence, useGpuTs);
+        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
         gpuTimes.push_back(t.gpuExecNs);
         recTimes.push_back(t.commandRecordingNs);
         subTimes.push_back(t.queueSubmitNs);
@@ -406,7 +425,6 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
     r.gpuExecNs = r.medianNs;
     r.completionWaitNs = medianU64(waitTimes);
 
-    // cv from gpuTimes (relative)
     {
         std::vector<double> d;
         for (auto v : gpuTimes) d.push_back((double)v);
@@ -420,11 +438,10 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
     if (!useGpuTs) {
         r.invalidReason = "GPU timestamp unsupported";
     } else {
-        double flopPerRound = (double)vec4Count * iterations * fmaPerIter * 2.0 * K;
-        if (r.medianNs > 0) r.metricValue = flopPerRound / (double)r.medianNs; // GFLOPS
+        double flop = (double)vec4Count * iters * fmaPerIter * 2.0;
+        if (r.medianNs > 0) r.metricValue = flop / (double)r.medianNs;
     }
 
-    // checksum: finite + changed
     vkMapMemory(h.device, io.mem, 0, bufBytes, 0, &mapped);
     f = (float*)mapped;
     double sum = 0; bool finite = true; bool changed = false;
@@ -444,6 +461,7 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
 }
 
 static WorkResult runTriad(Harness& h, int targetMs) {
+    (void)targetMs;
     WorkResult r;
     fillBase(r, h);
     r.metricUnit = "GB/s";
@@ -487,27 +505,23 @@ static WorkResult runTriad(Harness& h, int targetMs) {
     VkQueryPoolCreateInfo qpci{}; qpci.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     qpci.queryType = VK_QUERY_TYPE_TIMESTAMP; qpci.queryCount = 2;
     if (vkCreateQueryPool(h.device, &qpci, nullptr, &g.queryPool) != VK_SUCCESS) {
-        r.invalidReason = "queryPool"; g.destroy(h.device); destroyBuffer(h.device, A); destroyBuffer(h.device, B); destroyBuffer(h.device, O); return r;
+        r.invalidReason = "queryPool"; g.destroy(h.device);
+        destroyBuffer(h.device, A); destroyBuffer(h.device, B); destroyBuffer(h.device, O);
+        return r;
     }
     VkFenceCreateInfo fci{}; fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     if (vkCreateFence(h.device, &fci, nullptr, &g.fence) != VK_SUCCESS) {
-        r.invalidReason = "fence"; g.destroy(h.device); destroyBuffer(h.device, A); destroyBuffer(h.device, B); destroyBuffer(h.device, O); return r;
+        r.invalidReason = "fence"; g.destroy(h.device);
+        destroyBuffer(h.device, A); destroyBuffer(h.device, B); destroyBuffer(h.device, O);
+        return r;
     }
 
     bool useGpuTs = h.gpuTimestampUsable();
 
-    RoundTimings one = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, 1, g.queryPool, g.fence, useGpuTs);
-    uint64_t oneNs = useGpuTs ? one.gpuExecNs : (one.commandRecordingNs + one.queueSubmitNs + one.completionWaitNs);
-    uint32_t K = 1;
-    if (oneNs > 0) {
-        uint64_t target = (uint64_t)targetMs * 1000000ull;
-        K = (uint32_t)(target / oneNs); if (K < 1) K = 1; if (K > 64) K = 64;
-    }
-
     std::vector<uint64_t> gpuTimes, recTimes, subTimes, waitTimes;
-    for (int i = 0; i < 3; i++) h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, K, g.queryPool, g.fence, useGpuTs);
+    for (int i = 0; i < 3; i++) h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
     for (int i = 0; i < 7; i++) {
-        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, K, g.queryPool, g.fence, useGpuTs);
+        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
         gpuTimes.push_back(t.gpuExecNs);
         recTimes.push_back(t.commandRecordingNs);
         subTimes.push_back(t.queueSubmitNs);
@@ -531,8 +545,8 @@ static WorkResult runTriad(Harness& h, int targetMs) {
     if (!useGpuTs) {
         r.invalidReason = "GPU timestamp unsupported";
     } else {
-        double bytesPerRound = (double)count * 4.0 * 3.0 * K;
-        if (r.medianNs > 0) r.metricValue = bytesPerRound / (double)r.medianNs; // GB/s
+        double bytes = (double)count * 4.0 * 3.0; // K=1, single dispatch
+        if (r.medianNs > 0) r.metricValue = bytes / (double)r.medianNs;
     }
 
     vkMapMemory(h.device, A.mem, 0, bufBytes, 0, &m); fa = (float*)m;
@@ -540,8 +554,10 @@ static WorkResult runTriad(Harness& h, int targetMs) {
     vkMapMemory(h.device, O.mem, 0, bufBytes, 0, &m); float* fo = (float*)m;
     bool ok = true;
     for (uint32_t i = 0; i < count; i++) {
+        float actual = fo[i];
+        if (!std::isfinite(actual)) { ok = false; break; }
         float expected = fa[i] + scalar * fb[i];
-        if (std::fabs(fo[i] - expected) > 1e-4f) { ok = false; break; }
+        if (std::fabs(actual - expected) > 1e-4f) { ok = false; break; }
     }
     vkUnmapMemory(h.device, A.mem); vkUnmapMemory(h.device, B.mem); vkUnmapMemory(h.device, O.mem);
     r.checksumValid = ok;
@@ -595,7 +611,7 @@ Java_com_siliconverity_nativegpu_VulkanBench_nativeRunVulkanBenchmark(JNIEnv* en
     } else if (workload == 2) {
         r = runTriad(h, targetDurationMs);
     } else {
-        r = runFp32(h, targetDurationMs, workload == 0); // 0 = independent, 1 = dependency
+        r = runFp32(h, targetDurationMs, workload == 0);
     }
     return env->NewStringUTF(resultToStr(r).c_str());
 }

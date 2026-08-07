@@ -8,8 +8,10 @@ layout(set = 0, binding = 0) buffer IOBuffer {
 
 layout(push_constant) uniform Push {
     uint iterations;
-    float factor;
-    float offset;
+    float factorA, offsetA;
+    float factorB, offsetB;
+    float factorC, offsetC;
+    float factorD, offsetD;
     uint vec4Count;
 } pc;
 
@@ -18,8 +20,9 @@ void main() {
     if (base >= pc.vec4Count) return;
     uint i = base * 4u;
     vec4 v = vec4(data[i], data[i + 1u], data[i + 2u], data[i + 3u]);
+    // dependency: 单条依赖链 (仅用 factorA/offsetA)
     for (uint k = 0u; k < pc.iterations; ++k) {
-        v = v * pc.factor + pc.offset;
+        v = v * pc.factorA + pc.offsetA;
     }
     data[i]     = v.x;
     data[i + 1u] = v.y;

@@ -8,8 +8,10 @@ layout(set = 0, binding = 0) buffer IOBuffer {
 
 layout(push_constant) uniform Push {
     uint iterations;
-    float factor;
-    float offset;
+    float factorA, offsetA;
+    float factorB, offsetB;
+    float factorC, offsetC;
+    float factorD, offsetD;
     uint vec4Count;
 } pc;
 
@@ -17,20 +19,20 @@ void main() {
     uint base = gl_GlobalInvocationID.x;
     if (base >= pc.vec4Count) return;
     uint i = base * 4u;
+    // 4 条独立链, 各用不同 factor/offset (防代数合并)
     vec4 a = vec4(data[i], data[i + 1u], data[i + 2u], data[i + 3u]);
     vec4 b = a + vec4(1.0);
     vec4 c = a + vec4(2.0);
     vec4 d = a + vec4(3.0);
     for (uint k = 0u; k < pc.iterations; ++k) {
-        a = a * pc.factor + pc.offset;
-        b = b * pc.factor + pc.offset;
-        c = c * pc.factor + pc.offset;
-        d = d * pc.factor + pc.offset;
+        a = a * pc.factorA + pc.offsetA;
+        b = b * pc.factorB + pc.offsetB;
+        c = c * pc.factorC + pc.offsetC;
+        d = d * pc.factorD + pc.offsetD;
     }
     vec4 sum = a + b + c + d;
-    vec4 outv = sum * 0.25;
-    data[i]      = outv.x;
-    data[i + 1u] = outv.y;
-    data[i + 2u] = outv.z;
-    data[i + 3u] = outv.w;
+    data[i]      = sum.x;
+    data[i + 1u] = sum.y;
+    data[i + 2u] = sum.z;
+    data[i + 3u] = sum.w;
 }

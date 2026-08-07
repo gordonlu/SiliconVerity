@@ -7,7 +7,7 @@ object MemoryLatencyBench {
         System.loadLibrary("sv_mem")
     }
 
-    private external fun nativeRunLatency(sizeBytes: Long, accesses: Long): Double
+    private external fun nativeRunLatency(sizeBytes: Long, accesses: Long, rounds: Int): Double
 
     /** 固定 size 列表 (PROVISIONAL, PRD §13.2 子集, 避免过大置换内存)。 */
     val sizes: LongArray = longArrayOf(
@@ -28,7 +28,7 @@ object MemoryLatencyBench {
                 size <= 1024L * 1024 -> 2_000_000L
                 else -> 1_000_000L
             }
-            val ns = runCatching { nativeRunLatency(size, accesses) }.getOrDefault(-1.0)
+            val ns = runCatching { nativeRunLatency(size, accesses, 7) }.getOrDefault(-1.0)
             out += LatencyPoint(size, ns)
         }
         return out
