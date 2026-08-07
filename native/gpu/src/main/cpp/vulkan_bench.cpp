@@ -119,6 +119,22 @@ struct Harness {
         VkInstanceCreateInfo ici{};
         ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         ici.pApplicationInfo = &ai;
+
+        // 调试: 若设备装有 VK_LAYER_KHRONOS_validation 则启用 (无则安全跳过)
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+        std::vector<VkLayerProperties> layers(layerCount);
+        if (layerCount > 0) vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
+        bool hasValidation = false;
+        for (auto& l : layers) {
+            if (std::strcmp(l.layerName, "VK_LAYER_KHRONOS_validation") == 0) { hasValidation = true; break; }
+        }
+        const char* enableLayers[] = { "VK_LAYER_KHRONOS_validation" };
+        if (hasValidation) {
+            ici.enabledLayerCount = 1;
+            ici.ppEnabledLayerNames = enableLayers;
+        }
+
         VkResult r = vkCreateInstance(&ici, nullptr, &instance);
         if (r != VK_SUCCESS) { err = "vkCreateInstance=" + std::to_string(r); return false; }
         uint32_t pdc = 0;

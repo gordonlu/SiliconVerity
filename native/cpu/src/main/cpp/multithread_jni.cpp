@@ -1,16 +1,21 @@
 #include <jni.h>
 #include <cstdint>
 #include <thread>
+#include <barrier>
 #include <vector>
 #include <unistd.h>
 #include "sv_cpu_internal.h"
 
-// 多线程: N 个线程 (在线核心数) 各跑 int ALU mix, 测多核总吞吐与扩展。
-static uint64_t mt_loop(uint64_t seed, uint64_t itersPerThread, int threads) {
+// 多线程: N 个线程 (在线核心数) 各跑 int ALU mix。用 std::barrier 同步,
+// 只计时并发工作区间 (排除线程创建与 join 开销)。
+static uint64_t mt_work(uint64_t seed, uint64_t itersPerThread, int threads) {
+    std::barrier sync(static_cast<ptrdiff_t>(threads + 1));
     std::vector<std::thread> ts;
     ts.reserve(threads);
     std::vector<uint64_t> accs(threads, 0);
-    auto worker = [seed, itersPerThread, &accs](int idx) {
+
+    auto worker = [&, seed, itersPerThread](int idx) {
+        sync.arrive_and_wait();  // phase 1: 全部就绪
         uint64_t a = seed ^ ((uint64_t)idx * 0x9E3779B97F4A7C15ull);
         for (uint64_t i = 0; i < itersPerThread; ++i) {
             a = a * 0x100000001B3ull ^ (i + 0xABCDEFull);
@@ -20,13 +25,20 @@ static uint64_t mt_loop(uint64_t seed, uint64_t itersPerThread, int threads) {
             a ^= a >> 33;
         }
         accs[idx] = a;
+        sync.arrive_and_wait();  // phase 2: 全部完成
     };
+
     for (int i = 0; i < threads; ++i) ts.emplace_back(worker, i);
+    sync.arrive_and_wait();  // main phase 1: 全部就绪 -> 开始计时
+    uint64_t t0 = monotonic_nanos();
+    sync.arrive_and_wait();  // main phase 2: 等全部完成
+    uint64_t t1 = monotonic_nanos();
     for (auto& t : ts) t.join();
+
     uint64_t sum = 0;
     for (auto x : accs) sum += x;
     g_sink = sum;
-    return sum;
+    return t1 - t0;
 }
 
 extern "C" JNIEXPORT jlongArray JNICALL
@@ -34,11 +46,9 @@ Java_com_siliconverity_nativecpu_MultithreadWorkload_nativeRunOnce(JNIEnv* env, 
     int threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
     if (threads < 1) threads = 1;
     constexpr uint64_t ITERS_PER_THREAD = 8000000ull;
-    uint64_t t0 = monotonic_nanos();
-    mt_loop((uint64_t)seed, ITERS_PER_THREAD, threads);
-    uint64_t t1 = monotonic_nanos();
+    uint64_t dur = mt_work((uint64_t)seed, ITERS_PER_THREAD, threads);
     uint64_t totalOps = (uint64_t)threads * ITERS_PER_THREAD;
-    jlong out[2] = { (jlong)totalOps, (jlong)(t1 - t0) };
+    jlong out[2] = { (jlong)totalOps, (jlong)dur };
     jlongArray r = env->NewLongArray(2);
     if (r != nullptr) env->SetLongArrayRegion(r, 0, 2, out);
     return r;
@@ -52,7 +62,8 @@ Java_com_siliconverity_nativecpu_MultithreadWorkload_nativeThreadCount(JNIEnv*, 
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_siliconverity_nativecpu_MultithreadWorkload_nativeCorrectnessCheck(JNIEnv*, jclass) {
-    uint64_t a = mt_loop(42ull, 1000ull, 2);
-    uint64_t b = mt_loop(42ull, 1000ull, 2);
-    return (a == b) ? JNI_TRUE : JNI_FALSE;
+    mt_work(42ull, 1000ull, 2);
+    uint64_t a = g_sink;
+    mt_work(42ull, 1000ull, 2);
+    return (a == g_sink) ? JNI_TRUE : JNI_FALSE;
 }

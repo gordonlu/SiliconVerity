@@ -36,15 +36,23 @@ class GpuController(application: Application) : AndroidViewModel(application) {
     private var job: Job? = null
 
     fun run() {
+        if (!BenchmarkRunCoordinator.tryAcquire()) {
+            _state.value = GpuUiState.Done(null, null, null, "另一个 benchmark 正在运行")
+            return
+        }
         job?.cancel()
         job = viewModelScope.launch(Dispatchers.Default) {
-            _state.value = GpuUiState.Running
-            val sessionId = "gpu-" + UUID.randomUUID().toString()
-            val now = env.nowIso()
-            val indep = runOne(GpuWorkload.FP32_INDEPENDENT, "vulkan.fp32.independent", "0.1.0-alpha", sessionId, now)
-            val dep = runOne(GpuWorkload.FP32_DEPENDENCY, "vulkan.fp32.dependency", "0.1.0-alpha", sessionId, now)
-            val buf = runOne(GpuWorkload.BUFFER_THROUGHPUT, "vulkan.buffer.throughput", "0.1.0-alpha", sessionId, now)
-            _state.value = GpuUiState.Done(indep.first, dep.first, buf.first, indep.second ?: dep.second ?: buf.second)
+            try {
+                _state.value = GpuUiState.Running
+                val sessionId = "gpu-" + UUID.randomUUID().toString()
+                val now = env.nowIso()
+                val indep = runOne(GpuWorkload.FP32_INDEPENDENT, "vulkan.fp32.independent", "0.1.0-alpha", sessionId, now)
+                val dep = runOne(GpuWorkload.FP32_DEPENDENCY, "vulkan.fp32.dependency", "0.1.0-alpha", sessionId, now)
+                val buf = runOne(GpuWorkload.BUFFER_THROUGHPUT, "vulkan.buffer.throughput", "0.1.0-alpha", sessionId, now)
+                _state.value = GpuUiState.Done(indep.first, dep.first, buf.first, indep.second ?: dep.second ?: buf.second)
+            } finally {
+                BenchmarkRunCoordinator.release()
+            }
         }
     }
 

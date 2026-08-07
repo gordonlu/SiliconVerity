@@ -16,39 +16,66 @@ abstract class StorageWorkload(
     protected val sizeBytes: Long,
     protected val fileName: String,
 ) {
-    init {
-        dir.mkdirs()
-    }
-
+    init { dir.mkdirs() }
     protected val file: File get() = File(dir, fileName)
-    protected val buf = ByteArray(64 * 1024)
+    private val chunkBuf = ByteArray(64 * 1024)
+    private val fullData = ByteArray(sizeBytes.toInt())
+    private val readBuf = ByteArray(sizeBytes.toInt())
+    private var expectedChecksum = 0L
+    private var dataReady = false
 
-    protected fun writeDeterministic(seed: Long): Long {
-        val r = Random(seed)
+    protected fun ensureData() {
+        if (dataReady) return
+        val r = Random(0xC0FFEEL)
+        var off = 0
+        while (off < fullData.size) {
+            r.nextBytes(chunkBuf)
+            val n = minOf(chunkBuf.size, fullData.size - off)
+            System.arraycopy(chunkBuf, 0, fullData, off, n)
+            off += n
+        }
+        var cs = 0L
+        for (b in fullData) cs += b.toLong() and 0xFF
+        expectedChecksum = cs
+        dataReady = true
+    }
+
+    /** 计时: 仅写 (buffered, 无 fsync)。 */
+    protected fun writeBuffered() {
+        ensureData()
+        FileOutputStream(file).use { it.write(fullData) }
+    }
+
+    /** 计时: 写 + fdatasync (durable)。 */
+    protected fun writeDurable() {
+        ensureData()
         FileOutputStream(file).use { fos ->
-            var written = 0L
-            var checksum = 0L
-            while (written < sizeBytes) {
-                r.nextBytes(buf)
-                val n = minOf(buf.size.toLong(), sizeBytes - written).toInt()
-                fos.write(buf, 0, n)
-                for (i in 0 until n) checksum += buf[i].toLong() and 0xFF
-                written += n
-            }
-            return checksum
+            fos.write(fullData)
+            fos.fd.sync()
         }
     }
 
-    protected fun readAndChecksum(): Long {
+    /** 计时: 仅读 (返回读到的字节数)。 */
+    protected fun readInto(): Int {
+        var total = 0
         FileInputStream(file).use { fis ->
-            var checksum = 0L
-            while (true) {
-                val n = fis.read(buf)
+            while (total < readBuf.size) {
+                val n = fis.read(readBuf, total, readBuf.size - total)
                 if (n <= 0) break
-                for (i in 0 until n) checksum += buf[i].toLong() and 0xFF
+                total += n
             }
-            return checksum
         }
+        return total
+    }
+
+    /** 不计时: 校验读回内容。 */
+    protected fun verifyReadback(): Boolean {
+        if (file.length() != sizeBytes) return false
+        val len = readInto()
+        if (len != sizeBytes.toInt()) return false
+        var cs = 0L
+        for (i in 0 until len) cs += readBuf[i].toLong() and 0xFF
+        return cs == expectedChecksum
     }
 }
 
@@ -61,42 +88,76 @@ class StorageWriteWorkload(
         workloadId = "storage.seq_write.buffered",
         workloadVersion = "0.1.0-alpha",
         category = "STORAGE",
-        measurementTarget = "buffered sequential write throughput (MB/s)",
-        algorithm = "write 32MB high-entropy PRNG data, FileOutputStream (buffered, no fsync)",
+        measurementTarget = "buffered sequential write throughput (MB/s, page cache, no fsync)",
+        algorithm = "write 32MB pre-generated high-entropy data, FileOutputStream (buffered, no fsync)",
         implementationBackend = "Kotlin java.io",
         dataSize = sizeBytes,
         threadPolicy = "single thread",
-        timingMethod = "System.nanoTime around write",
+        timingMethod = "System.nanoTime around write only (data pre-generated)",
         warmupMinMillis = 500,
         warmupMaxMillis = 3000,
         warmupConvergeThreshold = 0.05,
         measurementRepetitions = 7,
-        correctnessCheck = "file size == sizeBytes",
-        invalidationRules = listOf("write incomplete"),
+        correctnessCheck = "file size + readback checksum",
+        invalidationRules = listOf("size mismatch", "checksum mismatch"),
         knownInterferences = listOf("page cache", "background I/O", "free space"),
     )
 
     private var seedCounter = 0x5AL
 
-    override fun warmUp() {
-        writeDeterministic(nextSeed())
-    }
+    override fun warmUp() { writeBuffered() }
 
     override fun runOnce(): Sample {
         val t0 = System.nanoTime()
-        writeDeterministic(nextSeed())
+        writeBuffered()
         val t1 = System.nanoTime()
         return Sample(index = -1, workUnits = sizeBytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
     }
 
     override fun correctnessCheck(): CorrectnessResult {
-        val ok = file.length() == sizeBytes
-        return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "file size mismatch" else null)
+        val ok = verifyReadback()
+        return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "size/checksum mismatch" else null)
     }
 
-    private fun nextSeed(): Long {
-        seedCounter = seedCounter * 6364136223846793005L + 1442695040888963407L
-        return seedCounter
+    private fun nextSeed(): Long { seedCounter = seedCounter * 6364136223846793005L + 1442695040888963407L; return seedCounter }
+}
+
+class StorageDurableWriteWorkload(
+    dir: File,
+    sizeBytes: Long = 32 * 1024 * 1024,
+) : StorageWorkload(dir, sizeBytes, "sv_storage_durable.bin"), Workload {
+
+    override val spec: BenchmarkSpec = BenchmarkSpec(
+        workloadId = "storage.seq_write.durable",
+        workloadVersion = "0.1.0-alpha",
+        category = "STORAGE",
+        measurementTarget = "durable sequential write throughput (MB/s, incl fdatasync)",
+        algorithm = "write 32MB + FileOutputStream.fd.sync() (fdatasync)",
+        implementationBackend = "Kotlin java.io",
+        dataSize = sizeBytes,
+        threadPolicy = "single thread",
+        timingMethod = "System.nanoTime around write + fd.sync()",
+        warmupMinMillis = 500,
+        warmupMaxMillis = 3000,
+        warmupConvergeThreshold = 0.05,
+        measurementRepetitions = 7,
+        correctnessCheck = "file size + readback checksum",
+        invalidationRules = listOf("sync failed", "checksum mismatch"),
+        knownInterferences = listOf("flash controller", "background I/O"),
+    )
+
+    override fun warmUp() { writeDurable() }
+
+    override fun runOnce(): Sample {
+        val t0 = System.nanoTime()
+        writeDurable()
+        val t1 = System.nanoTime()
+        return Sample(index = -1, workUnits = sizeBytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
+    }
+
+    override fun correctnessCheck(): CorrectnessResult {
+        val ok = verifyReadback()
+        return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "durable write verify failed" else null)
     }
 }
 
@@ -109,44 +170,37 @@ class StorageReadWorkload(
         workloadId = "storage.seq_read.warm",
         workloadVersion = "0.1.0-alpha",
         category = "STORAGE",
-        measurementTarget = "warm sequential read throughput (MB/s)",
-        algorithm = "read 32MB file sequentially (warm, page-cached)",
+        measurementTarget = "warm sequential read throughput (MB/s, page-cached)",
+        algorithm = "read 32MB file into buffer (warm, page-cached)",
         implementationBackend = "Kotlin java.io",
         dataSize = sizeBytes,
         threadPolicy = "single thread",
-        timingMethod = "System.nanoTime around read",
+        timingMethod = "System.nanoTime around read only",
         warmupMinMillis = 500,
         warmupMaxMillis = 3000,
         warmupConvergeThreshold = 0.05,
         measurementRepetitions = 7,
-        correctnessCheck = "checksum matches written",
+        correctnessCheck = "readback checksum matches written",
         invalidationRules = listOf("checksum mismatch"),
         knownInterferences = listOf("page cache", "background I/O"),
     )
 
-    private var expectedChecksum: Long = 0L
     private var warmed = false
 
     override fun warmUp() {
-        runOnce()
+        if (!warmed) { writeBuffered(); warmed = true }
+        readInto()
     }
 
     override fun runOnce(): Sample {
-        if (!warmed) {
-            expectedChecksum = writeDeterministic(0xC0FFEEL)
-            warmed = true
-        }
         val t0 = System.nanoTime()
-        readAndChecksum()
+        readInto()
         val t1 = System.nanoTime()
         return Sample(index = -1, workUnits = sizeBytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
     }
 
     override fun correctnessCheck(): CorrectnessResult {
-        if (file.length() != sizeBytes) {
-            return CorrectnessResult(passed = false, kind = ChecksumKind.EXACT, finite = true, reason = "file size mismatch")
-        }
-        val ok = readAndChecksum() == expectedChecksum
+        val ok = verifyReadback()
         return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "checksum mismatch" else null)
     }
 }

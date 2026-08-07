@@ -7,7 +7,10 @@ object WorkloadFormat {
 
     fun isStorage(workloadId: String): Boolean = workloadId.startsWith("storage.")
 
-    fun isMixedCompression(workloadId: String): Boolean = workloadId.startsWith("cpu.compress")
+    fun isMixedCompression(workloadId: String): Boolean = workloadId.startsWith("cpu.hash.")
+
+    fun isIntegerIterations(workloadId: String): Boolean =
+        workloadId.startsWith("cpu.int.") || workloadId == "cpu.multithread"
 
     fun isMemoryBandwidth(workloadId: String): Boolean = workloadId.startsWith("mem.bandwidth")
 
@@ -22,6 +25,7 @@ object WorkloadFormat {
         isMemoryBandwidth(workloadId) -> "GB/s"
         isVulkanFp32(workloadId) -> "GFLOPS"
         isVulkanBuffer(workloadId) -> "GB/s"
+        isIntegerIterations(workloadId) -> "M iter/s"
         else -> "M ops/s"
     }
 
@@ -32,6 +36,7 @@ object WorkloadFormat {
         isMemoryBandwidth(workloadId) -> value / 1_000_000_000.0
         isVulkanFp32(workloadId) -> value / 1_000_000_000.0
         isVulkanBuffer(workloadId) -> value / 1_000_000_000.0
+        isIntegerIterations(workloadId) -> value / 1_000_000.0
         else -> value / 1_000_000.0
     }
 }

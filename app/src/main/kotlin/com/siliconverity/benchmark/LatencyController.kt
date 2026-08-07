@@ -35,25 +35,33 @@ class LatencyController(application: Application) : AndroidViewModel(application
     }
 
     fun run() {
+        if (!BenchmarkRunCoordinator.tryAcquire()) {
+            _state.value = LatencyUiState.Error("另一个 benchmark 正在运行")
+            return
+        }
         viewModelScope.launch(Dispatchers.Default) {
-            _state.value = LatencyUiState.Running
-            val r = runCatching { MemoryLatencyBench.run() }
-            _state.value = r.fold(
-                onSuccess = { points ->
-                    val res = MemoryLatencyResult(
-                        runId = env.runId(),
-                        startedAt = env.nowIso(),
-                        deviceModel = env.deviceModel,
-                        socReported = env.socReported,
-                        androidVersion = env.androidVersion,
-                        abi = env.abi,
-                        points = points,
-                    )
-                    runCatching { store.save(res) }
-                    LatencyUiState.Done(points)
-                },
-                onFailure = { LatencyUiState.Error(it.message ?: "unknown") },
-            )
+            try {
+                _state.value = LatencyUiState.Running
+                val r = runCatching { MemoryLatencyBench.run() }
+                _state.value = r.fold(
+                    onSuccess = { points ->
+                        val res = MemoryLatencyResult(
+                            runId = env.runId(),
+                            startedAt = env.nowIso(),
+                            deviceModel = env.deviceModel,
+                            socReported = env.socReported,
+                            androidVersion = env.androidVersion,
+                            abi = env.abi,
+                            points = points,
+                        )
+                        runCatching { store.save(res) }
+                        LatencyUiState.Done(points)
+                    },
+                    onFailure = { LatencyUiState.Error(it.message ?: "unknown") },
+                )
+            } finally {
+                BenchmarkRunCoordinator.release()
+            }
         }
     }
 

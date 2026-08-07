@@ -27,25 +27,33 @@ class SustainedController(application: Application) : AndroidViewModel(applicati
     private var job: Job? = null
 
     fun start(durationSec: Int) {
+        if (!BenchmarkRunCoordinator.tryAcquire()) {
+            _state.value = SustainedUiState.Error("另一个 benchmark 正在运行")
+            return
+        }
         job?.cancel()
         job = viewModelScope.launch(Dispatchers.Default) {
-            _state.value = SustainedUiState.Running(
-                SustainedProgress(0.0, durationSec, 0.0, env.thermalStatusStart, emptyList()),
-            )
-            val workload = CpuIntegerWorkload()
-            val runner = SustainedRunner(workload, env) { System.nanoTime() }
-            val result = runCatching {
-                runner.run(durationSec, windowSec = 1) { p ->
-                    _state.value = SustainedUiState.Running(p)
+            try {
+                _state.value = SustainedUiState.Running(
+                    SustainedProgress(0.0, durationSec, 0.0, env.thermalStatusStart, emptyList()),
+                )
+                val workload = CpuIntegerWorkload()
+                val runner = SustainedRunner(workload, env) { System.nanoTime() }
+                val result = runCatching {
+                    runner.run(durationSec, windowSec = 1) { p ->
+                        _state.value = SustainedUiState.Running(p)
+                    }
                 }
+                _state.value = result.fold(
+                    onSuccess = {
+                        val saved = runCatching { store.save(it).name }.getOrNull()
+                        SustainedUiState.Done(it, saved)
+                    },
+                    onFailure = { SustainedUiState.Error(it.message ?: "unknown error") },
+                )
+            } finally {
+                BenchmarkRunCoordinator.release()
             }
-            _state.value = result.fold(
-                onSuccess = {
-                    val saved = runCatching { store.save(it).name }.getOrNull()
-                    SustainedUiState.Done(it, saved)
-                },
-                onFailure = { SustainedUiState.Error(it.message ?: "unknown error") },
-            )
         }
     }
 

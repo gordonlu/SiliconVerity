@@ -65,11 +65,11 @@ class CompressionWorkload : Workload {
     private external fun nativeCorrectnessCheck(): Boolean
 
     override val spec: BenchmarkSpec = BenchmarkSpec(
-        workloadId = "cpu.compress.mixed",
+        workloadId = "cpu.hash.cached",
         workloadVersion = "0.1.0-alpha",
         category = "CPU_SCENARIO",
-        measurementTarget = "mixed int+memory throughput (MB/s, rolling hash over 256KB)",
-        algorithm = "200 passes of rolling hash over 256KB buffer (int + cache mixed)",
+        measurementTarget = "mixed int+memory throughput (MB/s, rolling hash over 256KB cache-resident)",
+        algorithm = "200 passes of rolling hash over 256KB buffer (int + cache mixed; 非压缩, 是 hash)",
         implementationBackend = "NDK C++20 (arm64-v8a)",
         dataSize = 200L * 256 * 1024,
         threadPolicy = "single thread, scheduler default",

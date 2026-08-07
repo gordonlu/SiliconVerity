@@ -15,7 +15,7 @@ class StorageWorkloadsTest {
         val dir = newTempDir()
         val workload = StorageReadWorkload(dir, sizeBytes = 1024 * 1024)
         workload.warmUp()
-        assertTrue("correctness after warmup", workload.correctnessCheck())
+        assertTrue("correctness after warmup", workload.correctnessCheck().passed)
         val sample = workload.runOnce()
         assertEquals(1024 * 1024L, sample.workUnits)
         assertTrue("duration > 0", sample.durationNanos > 0)
@@ -28,7 +28,17 @@ class StorageWorkloadsTest {
         val dir = newTempDir()
         val workload = StorageWriteWorkload(dir, sizeBytes = 512 * 1024)
         workload.warmUp()
-        assertTrue("correctness after write", workload.correctnessCheck())
+        assertTrue("correctness after write", workload.correctnessCheck().passed)
+        assertEquals(512 * 1024L, workload.runOnce().workUnits)
+        dir.deleteRecursively()
+    }
+
+    @Test
+    fun durableWriteWorkloadProducesFullSizeFile() {
+        val dir = newTempDir()
+        val workload = StorageDurableWriteWorkload(dir, sizeBytes = 512 * 1024)
+        workload.warmUp()
+        assertTrue("correctness after durable write", workload.correctnessCheck().passed)
         assertEquals(512 * 1024L, workload.runOnce().workUnits)
         dir.deleteRecursively()
     }

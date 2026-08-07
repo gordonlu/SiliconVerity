@@ -10,6 +10,7 @@ import com.siliconverity.core.benchmark.Workload
 import com.siliconverity.core.storage.RunManifestStore
 import com.siliconverity.benchmark.storage.StorageReadWorkload
 import com.siliconverity.benchmark.storage.StorageWriteWorkload
+import com.siliconverity.benchmark.storage.StorageDurableWriteWorkload
 import com.siliconverity.nativecpu.CpuIntegerWorkload
 import com.siliconverity.nativecpu.Fp32FmaWorkload
 import com.siliconverity.nativememory.MemoryCopyWorkload
@@ -35,6 +36,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         MemoryReadWorkload(),
         MemoryCopyWorkload(),
         StorageWriteWorkload(benchDir),
+        StorageDurableWriteWorkload(benchDir),
         StorageReadWorkload(benchDir),
     )
     private val store = RunManifestStore(File(application.filesDir, "runs"))
@@ -43,22 +45,30 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     val state: StateFlow<BenchmarkUiState> = _state.asStateFlow()
 
     fun run() {
+        if (!BenchmarkRunCoordinator.tryAcquire()) {
+            _state.value = BenchmarkUiState.Done(emptyList(), "另一个 benchmark 正在运行")
+            return
+        }
         viewModelScope.launch(Dispatchers.Default) {
-            _state.value = BenchmarkUiState.Running
-            val sessionId = java.util.UUID.randomUUID().toString()
-            val results = mutableListOf<RunResult>()
-            var error: String? = null
-            for (workload in workloads) {
-                val outcome = runCatching { engine.execute(workload) }
-                val manifest = outcome.getOrNull()?.copy(sessionId = sessionId)
-                if (manifest == null) {
-                    error = outcome.exceptionOrNull()?.message
-                    break
+            try {
+                _state.value = BenchmarkUiState.Running
+                val sessionId = java.util.UUID.randomUUID().toString()
+                val results = mutableListOf<RunResult>()
+                var error: String? = null
+                for (workload in workloads) {
+                    val outcome = runCatching { engine.execute(workload) }
+                    val manifest = outcome.getOrNull()?.copy(sessionId = sessionId)
+                    if (manifest == null) {
+                        error = outcome.exceptionOrNull()?.message
+                        break
+                    }
+                    val saved = runCatching { store.save(manifest).name }.getOrNull()
+                    results += RunResult(manifest, saved)
                 }
-                val saved = runCatching { store.save(manifest).name }.getOrNull()
-                results += RunResult(manifest, saved)
+                _state.value = BenchmarkUiState.Done(results, error)
+            } finally {
+                BenchmarkRunCoordinator.release()
             }
-            _state.value = BenchmarkUiState.Done(results, error)
         }
     }
 }
