@@ -43,6 +43,8 @@ import com.siliconverity.feature.hardware.HardwareViewModel
 import com.siliconverity.feature.home.HomeScreen
 import com.siliconverity.feature.history.HistoryScreen
 import com.siliconverity.feature.history.HistoryViewModel
+import com.siliconverity.feature.history.CompareScreen
+import com.siliconverity.feature.history.CompareViewModel
 import com.siliconverity.feature.history.RunDetailScreen
 import com.siliconverity.feature.settings.SettingsScreen
 import com.siliconverity.feature.sustained.SustainedScreen
@@ -132,7 +134,12 @@ private fun AppShell() {
                     historyState,
                     onOpenRun = { runId -> nav.navigate("run/$runId") },
                     onClear = { historyVm.clear() },
+                    onCompare = { nav.navigate("compare") },
                 )
+            }
+            composable("compare") {
+                val compareVm: CompareViewModel = viewModel()
+                CompareScreen(vm = compareVm, onBack = { nav.popBackStack() })
             }
             composable("settings") {
                 SettingsScreen()

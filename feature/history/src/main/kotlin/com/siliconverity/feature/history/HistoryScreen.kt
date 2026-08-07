@@ -31,6 +31,7 @@ fun HistoryScreen(
     state: HistoryUiState,
     onOpenRun: (String) -> Unit,
     onClear: () -> Unit,
+    onCompare: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -45,6 +46,7 @@ fun HistoryScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("HISTORY", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onCompare, enabled = !state.loading && state.runs.isNotEmpty()) { Text("对比") }
                 TextButton(onClick = onClear, enabled = !state.loading && state.runs.isNotEmpty()) { Text("清空") }
             }
         }
