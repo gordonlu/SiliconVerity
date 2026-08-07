@@ -145,6 +145,7 @@ private fun SessionCard(
                 stringResource(
                     R.string.history_validity_summary,
                     session.stableCount,
+                    session.total,
                     session.variableCount,
                     session.total,
                 ),
