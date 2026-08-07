@@ -127,8 +127,11 @@ fun ResultScreen(
             }
         } else {
             item {
+                val reason = done.score?.exclusions?.firstOrNull()?.reason
+                    ?: done.error
+                    ?: stringResource(R.string.home_score_not_generated)
                 Text(
-                    done.error ?: stringResource(R.string.home_score_not_generated),
+                    reason,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )
