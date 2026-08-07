@@ -5,7 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.siliconverity.core.benchmark.SustainedProgress
 import com.siliconverity.core.benchmark.SustainedRunner
-import com.siliconverity.core.storage.SustainedResultStore
+import com.siliconverity.core.benchmark.toBenchmarkRun
+import com.siliconverity.core.storage.BenchmarkRunStore
 import com.siliconverity.feature.sustained.SustainedUiState
 import com.siliconverity.nativecpu.CpuIntegerWorkload
 import kotlinx.coroutines.Dispatchers
@@ -19,7 +20,7 @@ import java.io.File
 class SustainedController(application: Application) : AndroidViewModel(application) {
 
     private val env = AndroidBenchmarkEnvironment(application)
-    private val store = SustainedResultStore(File(application.filesDir, "sustained"))
+    private val store = BenchmarkRunStore(application.filesDir)
 
     private val _state = MutableStateFlow<SustainedUiState>(SustainedUiState.Idle)
     val state: StateFlow<SustainedUiState> = _state.asStateFlow()
@@ -46,7 +47,7 @@ class SustainedController(application: Application) : AndroidViewModel(applicati
                 }
                 _state.value = result.fold(
                     onSuccess = {
-                        val saved = runCatching { store.save(it).name }.getOrNull()
+                        val saved = runCatching { store.save(it.toBenchmarkRun()).name }.getOrNull()
                         SustainedUiState.Done(it, saved)
                     },
                     onFailure = { SustainedUiState.Error(it.message ?: "unknown error") },

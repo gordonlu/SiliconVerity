@@ -19,11 +19,7 @@ data class HistoryUiState(
 
 class HistoryViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val store = BenchmarkRunStore(
-        runsDir = File(application.filesDir, "runs"),
-        sustainedDir = File(application.filesDir, "sustained"),
-        latencyDir = File(application.filesDir, "latency"),
-    )
+    private val store = BenchmarkRunStore(application.filesDir)
 
     private val _state = MutableStateFlow(HistoryUiState())
     val state: StateFlow<HistoryUiState> = _state.asStateFlow()

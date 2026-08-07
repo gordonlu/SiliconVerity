@@ -7,7 +7,8 @@ import com.siliconverity.core.benchmark.BenchmarkEngine
 import com.siliconverity.core.benchmark.BenchmarkUiState
 import com.siliconverity.core.benchmark.RunResult
 import com.siliconverity.core.benchmark.Workload
-import com.siliconverity.core.storage.RunManifestStore
+import com.siliconverity.core.benchmark.toBenchmarkRun
+import com.siliconverity.core.storage.BenchmarkRunStore
 import com.siliconverity.benchmark.storage.StorageReadWorkload
 import com.siliconverity.benchmark.storage.StorageWriteWorkload
 import com.siliconverity.benchmark.storage.StorageDurableWriteWorkload
@@ -39,7 +40,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         StorageDurableWriteWorkload(benchDir),
         StorageReadWorkload(benchDir),
     )
-    private val store = RunManifestStore(File(application.filesDir, "runs"))
+    private val store = BenchmarkRunStore(application.filesDir)
 
     private val _state = MutableStateFlow<BenchmarkUiState>(BenchmarkUiState.Idle)
     val state: StateFlow<BenchmarkUiState> = _state.asStateFlow()
@@ -62,7 +63,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                         error = outcome.exceptionOrNull()?.message
                         break
                     }
-                    val saved = runCatching { store.save(manifest).name }.getOrNull()
+                    val saved = runCatching { store.save(manifest.toBenchmarkRun()).name }.getOrNull()
                     results += RunResult(manifest, saved)
                 }
                 _state.value = BenchmarkUiState.Done(results, error)

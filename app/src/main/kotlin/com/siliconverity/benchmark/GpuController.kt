@@ -8,7 +8,8 @@ import com.siliconverity.core.benchmark.ArithmeticType
 import com.siliconverity.core.benchmark.ChecksumKind
 import com.siliconverity.core.benchmark.RunManifest
 import com.siliconverity.core.benchmark.ValidityLevel
-import com.siliconverity.core.storage.RunManifestStore
+import com.siliconverity.core.benchmark.toBenchmarkRun
+import com.siliconverity.core.storage.BenchmarkRunStore
 import com.siliconverity.feature.gpu.GpuUiState
 import com.siliconverity.nativegpu.GpuWorkload
 import com.siliconverity.nativegpu.NativeGpuResult
@@ -28,7 +29,7 @@ class GpuController(application: Application) : AndroidViewModel(application) {
 
     private val bench = VulkanBench()
     private val env = AndroidBenchmarkEnvironment(application)
-    private val store = RunManifestStore(File(application.filesDir, "runs"))
+    private val store = BenchmarkRunStore(application.filesDir)
 
     private val _state = MutableStateFlow<GpuUiState>(GpuUiState.Idle)
     val state: StateFlow<GpuUiState> = _state.asStateFlow()
@@ -66,7 +67,7 @@ class GpuController(application: Application) : AndroidViewModel(application) {
         yield()
         return try {
             val r = bench.run(workload, 300)
-            runCatching { store.save(toManifest(r, workloadId, version, sessionId, nowIso)) }
+            runCatching { store.save(toManifest(r, workloadId, version, sessionId, nowIso).toBenchmarkRun()) }
             r to null
         } catch (e: CancellationException) {
             throw e

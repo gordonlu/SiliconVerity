@@ -45,11 +45,7 @@ fun BenchmarkRunDetailScreen(runId: String, onBack: () -> Unit) {
     val run by produceState<BenchmarkRun?>(initialValue = null, runId) {
         value = withContext(Dispatchers.IO) {
             val app = context.applicationContext
-            BenchmarkRunStore(
-                runsDir = File(app.filesDir, "runs"),
-                sustainedDir = File(app.filesDir, "sustained"),
-                latencyDir = File(app.filesDir, "latency"),
-            ).load(runId)
+            BenchmarkRunStore(app.filesDir).load(runId)
         }
     }
 

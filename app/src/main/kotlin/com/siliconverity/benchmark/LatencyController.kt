@@ -4,7 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.siliconverity.core.benchmark.MemoryLatencyResult
-import com.siliconverity.core.storage.MemoryLatencyResultStore
+import com.siliconverity.core.benchmark.toBenchmarkRun
+import com.siliconverity.core.storage.BenchmarkRunStore
 import com.siliconverity.nativememory.MemoryLatencyBench
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,14 +24,18 @@ sealed interface LatencyUiState {
 class LatencyController(application: Application) : AndroidViewModel(application) {
 
     private val env = AndroidBenchmarkEnvironment(application)
-    private val store = MemoryLatencyResultStore(File(application.filesDir, "latency"))
+    private val store = BenchmarkRunStore(application.filesDir)
 
     private val _state = MutableStateFlow<LatencyUiState>(LatencyUiState.Idle)
     val state: StateFlow<LatencyUiState> = _state.asStateFlow()
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            store.latest()?.let { _state.value = LatencyUiState.Done(it.points) }
+            val latest = store.list().firstOrNull { it.payload is com.siliconverity.core.benchmark.BenchmarkPayload.Curve }
+            val curve = latest?.payload as? com.siliconverity.core.benchmark.BenchmarkPayload.Curve
+            if (curve != null) {
+                _state.value = LatencyUiState.Done(curve.points)
+            }
         }
     }
 
@@ -54,7 +59,7 @@ class LatencyController(application: Application) : AndroidViewModel(application
                             abi = env.abi,
                             points = points,
                         )
-                        runCatching { store.save(res) }
+                        runCatching { store.save(res.toBenchmarkRun()) }
                         LatencyUiState.Done(points)
                     },
                     onFailure = { LatencyUiState.Error(it.message ?: "unknown") },
