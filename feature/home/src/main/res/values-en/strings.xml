@@ -58,7 +58,7 @@
     <string name="session_env_battery">BATTERY</string>
     <string name="session_env_power">POWER</string>
     <string name="session_hint">Keep the device still; avoid switching apps during the test</string>
-    <string name="session_paused">Paused (incoming call); resumes automatically</string>
+    <string name="session_paused">Paused (call/background); resumes automatically</string>
     <string name="session_stop">STOP</string>
 
     <!-- Result page -->

@@ -83,7 +83,10 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     private var sessionStartedAt: String = ""
 
     @Volatile
-    private var paused = false
+    private var phonePaused = false
+
+    @Volatile
+    private var backgroundPaused = false
 
     private val phoneReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -91,7 +94,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
             val extraState = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
             val incoming = extraState == TelephonyManager.EXTRA_STATE_RINGING ||
                 extraState == TelephonyManager.EXTRA_STATE_OFFHOOK
-            setPaused(incoming)
+            setPhonePaused(incoming)
         }
     }
 
@@ -109,18 +112,29 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         super.onCleared()
     }
 
-    private fun setPaused(value: Boolean) {
-        if (paused == value) return
-        paused = value
+    /** 切到后台暂停 (来电已由广播处理, 这里覆盖切出/锁屏)。 */
+    fun setBackgroundPaused(value: Boolean) {
+        if (backgroundPaused == value) return
+        backgroundPaused = value
+        refreshPaused()
+    }
+
+    private fun setPhonePaused(value: Boolean) {
+        if (phonePaused == value) return
+        phonePaused = value
+        refreshPaused()
+    }
+
+    private fun refreshPaused() {
         val current = _state.value
         if (current is BenchmarkUiState.Running) {
-            _state.value = current.copy(paused = value)
+            _state.value = current.copy(paused = phonePaused || backgroundPaused)
         }
     }
 
-    /** 来电/通话期间挂起, 挂断自动恢复。 */
+    /** 来电/切后台期间挂起, 恢复后自动继续。 */
     private suspend fun awaitResume() {
-        while (paused) delay(300)
+        while (phonePaused || backgroundPaused) delay(300)
     }
 
     fun run() {
@@ -154,7 +168,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                             sampleCount = sampleCount,
                             completed = completed.toList(),
                             environment = snapshot,
-                            paused = paused,
+                            paused = phonePaused || backgroundPaused,
                         )
                     }
                     if (item.isLatency) {

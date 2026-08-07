@@ -24,6 +24,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,6 +89,20 @@ private fun AppShell() {
     val benchmarkVm: BenchmarkController = viewModel()
     val hardwareState by hardwareVm.state.collectAsStateWithLifecycle()
     val benchmarkState by benchmarkVm.state.collectAsStateWithLifecycle()
+
+    // 切到后台暂停测试, 返回自动恢复 (避免全核跑分拖垮系统)
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> benchmarkVm.setBackgroundPaused(true)
+                androidx.lifecycle.Lifecycle.Event.ON_START -> benchmarkVm.setBackgroundPaused(false)
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // 完成后自动进入结果页 (仅状态首次变为 Done 时)
     var lastDone by remember { mutableStateOf<BenchmarkUiState.Done?>(null) }
