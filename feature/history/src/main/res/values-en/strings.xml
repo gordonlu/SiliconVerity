@@ -6,6 +6,8 @@
     <string name="history_empty">No runs yet.</string>
     <string name="history_items">%1$d items</string>
     <string name="history_cv">CV %1$.4f</string>
+    <string name="compare_guide">Pick two runs of the same workload: first selection is A, second is B. The comparison appears at the bottom.</string>
+    <string name="compare_mismatch">Different workloads selected — pick two runs of the same workload</string>
 
     <string name="history_back">BACK</string>
     <string name="history_run_manifest_title">RUN MANIFEST</string>

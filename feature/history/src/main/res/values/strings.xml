@@ -6,6 +6,8 @@
     <string name="history_empty">尚无运行记录。</string>
     <string name="history_items">%1$d 项</string>
     <string name="history_cv">CV %1$.4f</string>
+    <string name="compare_guide">选择同一项目的两次运行进行对比：第一次选中标 A，第二次标 B，对比结果在列表底部。</string>
+    <string name="compare_mismatch">选择了不同项目，请选同一项目的两次运行</string>
 
     <string name="history_back">返回</string>
     <string name="history_run_manifest_title">运行清单</string>

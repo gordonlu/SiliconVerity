@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.siliconverity.core.benchmark.RunManifest
-import com.siliconverity.core.storage.RunManifestStore
+import com.siliconverity.core.benchmark.BenchmarkRun
+import com.siliconverity.core.storage.BenchmarkRunStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,10 +15,10 @@ import java.io.File
 
 class CompareViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val store = RunManifestStore(File(application.filesDir, "runs"))
+    private val store = BenchmarkRunStore(application.filesDir)
 
-    private val _runs = MutableStateFlow<List<RunManifest>>(emptyList())
-    val runs: StateFlow<List<RunManifest>> = _runs.asStateFlow()
+    private val _runs = MutableStateFlow<List<BenchmarkRun>>(emptyList())
+    val runs: StateFlow<List<BenchmarkRun>> = _runs.asStateFlow()
 
     val selected = mutableStateListOf<String>()
 

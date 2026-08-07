@@ -289,8 +289,14 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     }
 
     private fun computeScore(results: List<RunResult>): com.siliconverity.core.benchmark.ScoreReport? {
-        val pack = com.siliconverity.core.benchmark.ScorePackLoader.loadDefault() ?: return null
+        val pack = com.siliconverity.core.benchmark.ScorePackLoader.loadDefault()
+        android.util.Log.i("SV-Score", "pack=${pack?.scoreVersion} ref-ilp=${pack?.references?.get("cpu.int.ilp")}")
+        if (pack == null) return null
         val runs = results.map { it.manifest.toBenchmarkRun() }
-        return runCatching { com.siliconverity.core.benchmark.ScoringEngine(pack).score(runs) }.getOrNull()
+        return runCatching {
+            val report = com.siliconverity.core.benchmark.ScoringEngine(pack).score(runs)
+            android.util.Log.i("SV-Score", "overall=${report.overallScore} cpu=${report.cpuScore} gpu=${report.gpuScore} mem=${report.memoryScore} io=${report.appIoScore} excl=${report.exclusions.size}")
+            report
+        }.getOrNull()
     }
 }

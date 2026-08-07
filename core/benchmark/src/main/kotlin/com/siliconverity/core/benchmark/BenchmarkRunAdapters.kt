@@ -149,3 +149,9 @@ fun BenchmarkRun.primaryMetric(): String = when (val p = payload) {
     }
     is BenchmarkPayload.Diagnostics -> "diag %d".format(p.metrics.size)
 }
+
+/** Scalar payload 的 session median (对比用)。 */
+fun BenchmarkRun.payloadSummaryMedian(): Double = when (val p = payload) {
+    is BenchmarkPayload.Scalar -> p.summary.median
+    else -> 0.0
+}
