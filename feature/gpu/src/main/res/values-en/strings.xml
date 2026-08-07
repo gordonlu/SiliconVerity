@@ -7,10 +7,10 @@
     <string name="gpu_run_measuring">MEASURING...</string>
     <string name="gpu_stop">STOP</string>
     <string name="gpu_not_run">NOT RUN YET</string>
-    <string name="gpu_running_hint">FP32 Independent / Dependency / Buffer: 3 warmups + 7 measurements each…</string>
+    <string name="gpu_running_hint">FP32 Independent / Dependency-HEAVY / Buffer</string>
     <string name="gpu_error">Error: %1$s</string>
     <string name="gpu_card_independent">FP32 INDEPENDENT</string>
-    <string name="gpu_card_dependency">FP32 DEPENDENCY</string>
+    <string name="gpu_card_dependency">FP32 DEPENDENCY-HEAVY</string>
     <string name="gpu_card_buffer">BUFFER THROUGHPUT</string>
     <string name="gpu_no_result">NO RESULT</string>
     <string name="gpu_vulkan_unavailable">Vulkan unavailable</string>

@@ -111,6 +111,9 @@ private fun ResultCard(title: String, r: NativeGpuResult?) {
                 return@Column
             }
             r.deviceName?.let { Text(it, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold) }
+            r.diag?.takeIf { it.isNotEmpty() }?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(
                 stringResource(R.string.gpu_driver_line, r.driverVersion ?: "?", r.vulkanVersion ?: "?"),
                 style = MaterialTheme.typography.bodySmall,

@@ -32,10 +32,10 @@
       "weight": 0.35,
       "workloads": {
         "vulkan.fp32.independent": {
-          "weight": 0.45
+          "weight": 0.6
         },
         "vulkan.fp32.dependency": {
-          "weight": 0.3
+          "weight": 0.15
         },
         "vulkan.buffer.throughput": {
           "weight": 0.25

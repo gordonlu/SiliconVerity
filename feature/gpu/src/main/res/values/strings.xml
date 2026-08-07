@@ -7,10 +7,10 @@
     <string name="gpu_run_measuring">MEASURING...</string>
     <string name="gpu_stop">STOP</string>
     <string name="gpu_not_run">尚未运行</string>
-    <string name="gpu_running_hint">FP32 Independent / Dependency / Buffer 各 3 预热 + 7 测量…</string>
+    <string name="gpu_running_hint">FP32 Independent / Dependency-HEAVY / Buffer</string>
     <string name="gpu_error">出错: %1$s</string>
     <string name="gpu_card_independent">FP32 INDEPENDENT</string>
-    <string name="gpu_card_dependency">FP32 DEPENDENCY</string>
+    <string name="gpu_card_dependency">FP32 依赖链吞吐</string>
     <string name="gpu_card_buffer">BUFFER THROUGHPUT</string>
     <string name="gpu_no_result">无结果</string>
     <string name="gpu_vulkan_unavailable">Vulkan 不可用</string>

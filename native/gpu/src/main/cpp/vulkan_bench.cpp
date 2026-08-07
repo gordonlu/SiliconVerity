@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdio>
 #include <dlfcn.h>
+// #include <android/log.h>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -15,6 +16,8 @@
 #include "fp32_spv.h"
 #include "fp32_independent_spv.h"
 #include "buffer_triad_spv.h"
+
+// #define LOGD(...) __android_log_print(ANDROID_LOG_INFO, "SV_GPU", __VA_ARGS__)
 
 namespace {
 
@@ -128,8 +131,9 @@ static void destroyBuffer(VkDevice dev, Buffer& b) {
 struct RoundTimings {
     uint64_t commandRecordingNs = 0;
     uint64_t queueSubmitNs = 0;
-    uint64_t gpuExecNs = 0;
-    uint64_t completionWaitNs = 0;
+    uint64_t gpuExecNs = 0;          // Vulkan timestamp (diagnostic only)
+    uint64_t completionWaitNs = 0;   // 旧: submit 返回后等待时长 (弃用)
+    uint64_t submitToFenceNs = 0;    // 正式计时: submit 前 -> fence 完成
 };
 
 struct Harness {
@@ -252,15 +256,24 @@ struct Harness {
         VkSubmitInfo si{};
         si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         si.commandBufferCount = 1; si.pCommandBuffers = &cmd;
-        uint64_t sub0 = monotonic_nanos();
+        // 正式计时起点: submit 之前 (GPU 可能在 submit 内即开始执行)
+        uint64_t wall0 = monotonic_nanos();
         VkResult sr = vkQueueSubmit(queue, 1, &si, fence);
-        t.queueSubmitNs = monotonic_nanos() - sub0;
+        uint64_t sub0 = monotonic_nanos();
+        t.queueSubmitNs = sub0 - wall0;
 
         uint64_t wait0 = monotonic_nanos();
+        VkResult wr = VK_ERROR_UNKNOWN;
         if (sr == VK_SUCCESS) {
-            VkResult wr = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ULL * 1000000000ULL);
-            vkResetFences(device, 1, &fence);
-            if (wr == VK_SUCCESS && useGpuTs) {
+            wr = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ULL * 1000000000ULL);
+        }
+        uint64_t wall1 = monotonic_nanos();
+        vkResetFences(device, 1, &fence);
+        if (sr == VK_SUCCESS && wr == VK_SUCCESS) {
+            t.submitToFenceNs = wall1 - wall0;
+        }
+        t.completionWaitNs = (sr == VK_SUCCESS) ? wall1 - wait0 : 0;
+        if (wr == VK_SUCCESS && useGpuTs) {
                 uint64_t ts[2] = {0, 0};
                 vkGetQueryPoolResults(device, queryPool, 0, 2, sizeof(ts), ts, sizeof(uint64_t),
                     VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
@@ -270,8 +283,6 @@ struct Harness {
                     t.gpuExecNs = (uint64_t)((double)diff * (double)tsPeriod);
                 }
             }
-        }
-        t.completionWaitNs = monotonic_nanos() - wait0;
         vkFreeCommandBuffers(device, cmdPool, 1, &cmd);
         return t;
     }
@@ -346,6 +357,7 @@ struct WorkResult {
     std::string arithType;
     std::string arithContract;
     bool retestNeeded = false;
+    std::string diag;
 };
 
 static std::string vkVersionStr(uint32_t v) {
@@ -451,81 +463,79 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
     // GPU workload 宣告 (Android 16 ADPF: 提前告知 GPU 负载将显著增加)
     announceGpuLoad();
 
-    // ==== GPU BOOST SEEKING ====
-    // 连续跑 kernel 直到进入"高性能稳定平台": 最后 3 轮 CV<3% 且 >= peak*97%,
-    // 至少 1.5s, 最长 4s。移动 GPU DVFS 从低 P-state 爬升需要时间。
-    const uint32_t PRIME_MIN_MS = 1500;
-    const uint32_t PRIME_MAX_MS = 4000;
-    const double plateauFlop = (double)vec4Count * 1024 * fmaPerIter * 2.0;
-
-    auto runRoundGflops = [&](uint32_t iterations) -> double {
-        pcData.iterations = iterations;
-        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-        if (!useGpuTs || t.gpuExecNs <= 0) return 0.0;
-        return (double)vec4Count * iterations * fmaPerIter * 2.0 / (double)t.gpuExecNs;
-    };
-
-    double plateauGflops = 0.0;
-    {
-        std::vector<double> window;
-        double peak = 0.0;
-        uint64_t primeStart = monotonic_nanos();
-        while (true) {
-            double gf = runRoundGflops(1024);
-            peak = std::max(peak, gf);
-            window.push_back(gf);
-            if (window.size() > 3) window.erase(window.begin());
-            uint64_t elapsed = monotonic_nanos() - primeStart;
-            if (elapsed >= PRIME_MIN_MS * 1000000ull && window.size() == 3) {
-                bool allHigh = true;
-                for (auto w : window) if (w < peak * 0.97) { allHigh = false; break; }
-                if (robustCv(window) < 0.03 && allHigh && peak > 0.0) {
-                    plateauGflops = medianD(window);
-                    break;
-                }
-            }
-            if (elapsed >= PRIME_MAX_MS * 1000000ull) { plateauGflops = peak; break; }
-        }
-    }
-
-    // ==== CALIBRATION (稳定平台下, 单 dispatch K=1) ====
+    // ==== GPU PRIME (固定 8 轮 ~200ms, 不判平台/不算 plateau) ====
+    // probe: 1024 测时, 放大到 ~200ms/轮
     pcData.iterations = 1024;
-    RoundTimings one = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+    RoundTimings probe = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+    uint64_t probeNs = probe.submitToFenceNs;
+    uint32_t boostIters = 1024;
+    if (probeNs > 0) {
+        boostIters = (uint32_t)((double)1024.0 * 200000000.0 / (double)probeNs);
+        if (boostIters < 1024) boostIters = 1024;
+        if (boostIters > 100000000u) boostIters = 100000000u;
+    }
+    std::vector<uint64_t> primeNs;
+    for (int i = 0; i < 8; i++) {
+        pcData.iterations = boostIters;
+        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+        if (t.submitToFenceNs > 0) primeNs.push_back(t.submitToFenceNs);
+    }
+    uint64_t primeMedianNs = primeNs.empty() ? 0 : medianU64(primeNs);
+
+    // ==== CALIBRATION (逐级, host submit-to-fence; 每级放大 clamp 1.5~8x) ====
+    // L1: 1024 -> 目标 30ms (若 <20ms 才放大, 每级最多 x8)
     uint32_t iters = 1024;
-    if (useGpuTs && one.gpuExecNs > 0) {
+    pcData.iterations = iters;
+    RoundTimings calib0 = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+    uint64_t calibNs = calib0.submitToFenceNs;
+    uint64_t calibItersL1 = iters;
+    if (calibNs > 0 && calibNs < 20000000ull) {   // < 20ms 才放大
+        double scale = 30000000.0 / (double)calibNs;   // 目标 30ms
+        scale = std::clamp(scale, 1.5, 8.0);
+        iters = (uint32_t)((double)iters * scale);
+        if (iters > 100000000u) iters = 100000000u;
+        pcData.iterations = iters;
+        RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+        if (m.submitToFenceNs > 0) calibNs = m.submitToFenceNs;
+    }
+    // L2: 中间轮 median -> ~targetMs
+    if (calibNs > 0) {
         uint64_t target = (uint64_t)targetMs * 1000000ull;
-        iters = (uint32_t)((double)1024.0 * (double)target / (double)one.gpuExecNs);
+        iters = (uint32_t)((double)iters * (double)target / (double)calibNs);
         if (iters < 1024) iters = 1024;
         if (iters > 100000000u) iters = 100000000u;
     }
     pcData.iterations = iters;
+    // LOGD("calib: L1Iters=%llu L1Ns=%llu finalIters=%u", (unsigned long long)calibItersL1, (unsigned long long)calibNs, iters);
 
     // ==== MEASURE (settle 1 轮 + 7 轮, transition/双峰检测自动重来) ====
-    std::vector<uint64_t> gpuTimes, recTimes, subTimes, waitTimes;
+    std::vector<uint64_t> gpuTimes, recTimes, subTimes, submitFenceTimes;
     std::vector<double> mGflops;
     bool transitionOrBimodal = false;
 
     for (int attempt = 0; attempt < 2; attempt++) {
         // settle
         h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-        gpuTimes.clear(); recTimes.clear(); subTimes.clear(); waitTimes.clear(); mGflops.clear();
+        gpuTimes.clear(); recTimes.clear(); subTimes.clear(); submitFenceTimes.clear(); mGflops.clear();
 
         for (int i = 0; i < 7; i++) {
             RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
             gpuTimes.push_back(t.gpuExecNs);
             recTimes.push_back(t.commandRecordingNs);
             subTimes.push_back(t.queueSubmitNs);
-            waitTimes.push_back(t.completionWaitNs);
-            if (useGpuTs && t.gpuExecNs > 0) {
-                mGflops.push_back((double)vec4Count * iters * fmaPerIter * 2.0 / (double)t.gpuExecNs);
+            submitFenceTimes.push_back(t.submitToFenceNs);
+            if (t.submitToFenceNs > 0) {
+                mGflops.push_back((double)vec4Count * iters * fmaPerIter * 2.0 / (double)t.submitToFenceNs);
             }
         }
 
-        // 迟到升频: measurement 中出现显著高于 warmup 平台的样本 -> P-state transition
+        // 迟到升频: 样本显著高于 prime 中位数换算的基线 -> P-state transition
         transitionOrBimodal = false;
-        if (useGpuTs && plateauGflops > 0.0 && mGflops.size() >= 7) {
+        double primeBaselineGflops = (primeMedianNs > 0 && boostIters > 0)
+            ? (double)vec4Count * boostIters * fmaPerIter * 2.0 / (double)primeMedianNs : 0.0;
+        if (primeBaselineGflops > 0.0 && mGflops.size() >= 7) {
             for (auto gf : mGflops) {
-                if (gf > plateauGflops * 1.08) { transitionOrBimodal = true; break; }
+                if (gf > primeBaselineGflops * 1.08) { transitionOrBimodal = true; break; }
             }
         }
         // 双峰: 低 3 均值与高 3 均值差 > 12% (如 4.5/4.5/2.3/2.3/4.5/2.3/4.5)
@@ -539,30 +549,32 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
         }
 
         if (!transitionOrBimodal) break;
-        // 重新 boost -> calibrate -> measure (最多 1 次重来)
+        // 重新 prime -> 重新校准 -> measure (最多 1 次重来)
         if (attempt == 0) {
-            {
-                std::vector<double> window;
-                double peak = 0.0;
-                uint64_t primeStart = monotonic_nanos();
-                while (true) {
-                    double gf = runRoundGflops(1024);
-                    peak = std::max(peak, gf);
-                    window.push_back(gf);
-                    if (window.size() > 3) window.erase(window.begin());
-                    uint64_t elapsed = monotonic_nanos() - primeStart;
-                    if (elapsed >= PRIME_MIN_MS * 1000000ull && window.size() == 3) {
-                        bool allHigh = true;
-                        for (auto w : window) if (w < peak * 0.97) { allHigh = false; break; }
-                        if (robustCv(window) < 0.03 && allHigh && peak > 0.0) { plateauGflops = medianD(window); break; }
-                    }
-                    if (elapsed >= PRIME_MAX_MS * 1000000ull) { plateauGflops = peak; break; }
-                }
+            primeNs.clear();
+            for (int i = 0; i < 8; i++) {
+                pcData.iterations = boostIters;
+                RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+                if (t.submitToFenceNs > 0) primeNs.push_back(t.submitToFenceNs);
             }
-            one = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-            if (useGpuTs && one.gpuExecNs > 0) {
+            primeMedianNs = primeNs.empty() ? 0 : medianU64(primeNs);
+            // 逐级校准 (L1 + L2)
+            iters = 1024;
+            pcData.iterations = iters;
+            RoundTimings c0 = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+            calibNs = c0.submitToFenceNs;
+            if (calibNs > 0 && calibNs < 20000000ull) {
+                double scale = 30000000.0 / (double)calibNs;
+                scale = std::clamp(scale, 1.5, 8.0);
+                iters = (uint32_t)((double)iters * scale);
+                if (iters > 100000000u) iters = 100000000u;
+                pcData.iterations = iters;
+                RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+                if (m.submitToFenceNs > 0) calibNs = m.submitToFenceNs;
+            }
+            if (calibNs > 0) {
                 uint64_t target = (uint64_t)targetMs * 1000000ull;
-                iters = (uint32_t)((double)1024.0 * (double)target / (double)one.gpuExecNs);
+                iters = (uint32_t)((double)iters * (double)target / (double)calibNs);
                 if (iters < 1024) iters = 1024;
                 if (iters > 100000000u) iters = 100000000u;
             }
@@ -570,16 +582,23 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
         }
     }
     if (transitionOrBimodal) r.retestNeeded = true;
+    uint64_t measureMedianNs = submitFenceTimes.empty() ? 0 : medianU64(submitFenceTimes);
+    r.diag = "probeIters=1024 probeNs=" + std::to_string(probeNs) +
+             " primeIters=" + std::to_string(boostIters) + " primeRounds=8 primeMedianNs=" + std::to_string(primeMedianNs) +
+             " calibIters=" + std::to_string(calibItersL1) + " calibNs=" + std::to_string(calibNs) +
+             " finalIters=" + std::to_string(iters) + " targetNs=" + std::to_string((uint64_t)targetMs * 1000000ull) +
+             " measureMedianNs=" + std::to_string(measureMedianNs);
 
-    r.medianNs = medianU64(gpuTimes);
+    // 正式成绩 = host submit-to-fence 中位数; gpuExecNs 保留 timestamp 作诊断
+    r.medianNs = medianU64(submitFenceTimes);
     r.commandRecordingNs = medianU64(recTimes);
     r.queueSubmitNs = medianU64(subTimes);
-    r.gpuExecNs = r.medianNs;
-    r.completionWaitNs = medianU64(waitTimes);
+    r.gpuExecNs = medianU64(gpuTimes);
+    r.completionWaitNs = medianU64(submitFenceTimes);
 
     {
         std::vector<double> d;
-        for (auto v : gpuTimes) d.push_back((double)v);
+        for (auto v : submitFenceTimes) d.push_back((double)v);
         double med = medianD(d);
         std::vector<double> dev;
         for (auto v : d) dev.push_back(std::fabs(v - med));
@@ -590,6 +609,7 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
     if (!useGpuTs) {
         r.invalidReason = "GPU timestamp unsupported";
     } else {
+        // metric 用 host 墙钟 (median wait 时长), 不依赖 GPU timestamp
         double flop = (double)vec4Count * iters * fmaPerIter * 2.0;
         if (r.medianNs > 0) r.metricValue = flop / (double)r.medianNs;
     }
@@ -748,6 +768,7 @@ static std::string resultToStr(const WorkResult& r) {
     s += "arithType="; s += r.arithType; s += ";";
     s += "arithContract="; s += r.arithContract; s += ";";
     s += "retest="; s += (r.retestNeeded ? "1" : "0"); s += ";";
+    s += "diag="; s += r.diag; s += ";";
     s += "invalidReason="; s += r.invalidReason;
     return s;
 }

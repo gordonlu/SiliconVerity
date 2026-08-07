@@ -55,10 +55,10 @@
     <string name="wl_mem_copy_desc">Read+write copy bandwidth</string>
     <string name="wl_mem_latency">RANDOM LATENCY</string>
     <string name="wl_mem_latency_desc">Pointer chase, L1 to RAM latency curve</string>
-    <string name="wl_gpu_fp32_par">FP32 PARALLEL</string>
-    <string name="wl_gpu_fp32_par_desc">Vulkan compute, independent lanes</string>
-    <string name="wl_gpu_fp32_dep">FP32 DEPENDENCY</string>
-    <string name="wl_gpu_fp32_dep_desc">Vulkan compute, serial dependency</string>
+    <string name="wl_gpu_fp32_par">FP32 并行</string>
+    <string name="wl_gpu_fp32_par_desc">Vulkan compute，独立通道</string>
+    <string name="wl_gpu_fp32_dep">FP32 依赖链吞吐</string>
+    <string name="wl_gpu_fp32_dep_desc">单 invocation 单依赖链、高并发调度下的 FP32 吞吐</string>
     <string name="wl_gpu_buffer">BUFFER THROUGHPUT</string>
     <string name="wl_gpu_buffer_desc">Vulkan storage buffer bandwidth</string>
     <string name="wl_io_buffered">SEQUENTIAL WRITE</string>
