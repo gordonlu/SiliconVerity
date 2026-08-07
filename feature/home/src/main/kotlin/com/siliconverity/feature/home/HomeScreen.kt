@@ -84,6 +84,9 @@ fun HomeScreen(
     ) {
         item { BrandRow(deviceId, onOpenHardware) }
         item { HeroTitle(running) }
+        item {
+            PrimaryCta(running = running, onClick = onStartBenchmark)
+        }
         item { MetricMatrix(hardwareFacts) }
         val done = benchmarkState as? BenchmarkUiState.Done
         val score = done?.score
@@ -91,9 +94,6 @@ fun HomeScreen(
             item { LastScoreCard(score, done) }
         } else {
             item { LastRun(lastRun, onOpenRun) }
-        }
-        item {
-            PrimaryCta(running = running, onClick = onStartBenchmark)
         }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SvSpacing.Sm)) {
