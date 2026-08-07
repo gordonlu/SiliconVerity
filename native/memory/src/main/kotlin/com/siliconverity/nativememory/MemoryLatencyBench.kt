@@ -1,13 +1,13 @@
 package com.siliconverity.nativememory
 
+import com.siliconverity.core.benchmark.LatencyPoint
+
 object MemoryLatencyBench {
     init {
         System.loadLibrary("sv_mem")
     }
 
     private external fun nativeRunLatency(sizeBytes: Long, accesses: Long): Double
-
-    data class LatencyPoint(val sizeBytes: Long, val latencyNs: Double)
 
     /** 固定 size 列表 (PROVISIONAL, PRD §13.2 子集, 避免过大置换内存)。 */
     val sizes: LongArray = longArrayOf(
@@ -22,7 +22,6 @@ object MemoryLatencyBench {
 
     fun run(): List<LatencyPoint> {
         val out = ArrayList<LatencyPoint>(sizes.size)
-        // accesses 自适应: 小 size 多次 (否则太快), 大 size 适度
         for (size in sizes) {
             val accesses = when {
                 size <= 64L * 1024 -> 5_000_000L

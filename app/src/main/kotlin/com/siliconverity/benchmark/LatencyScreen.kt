@@ -35,7 +35,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.siliconverity.core.designsystem.SvSpacing
-import com.siliconverity.nativememory.MemoryLatencyBench
+import com.siliconverity.core.benchmark.LatencyPoint
 import kotlin.math.ln
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,7 +87,7 @@ fun LatencyScreen(
 }
 
 @Composable
-private fun LatencyCurve(points: List<MemoryLatencyBench.LatencyPoint>, modifier: Modifier = Modifier) {
+private fun LatencyCurve(points: List<LatencyPoint>, modifier: Modifier = Modifier) {
     val accent = MaterialTheme.colorScheme.primary
     val muted = MaterialTheme.colorScheme.outline
     Canvas(modifier = modifier) {
