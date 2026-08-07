@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.siliconverity.core.benchmark.BenchmarkEngine
 import com.siliconverity.core.benchmark.BenchmarkUiState
+import com.siliconverity.core.benchmark.MemoryLatencyResult
 import com.siliconverity.core.benchmark.RunResult
 import com.siliconverity.core.benchmark.Workload
 import com.siliconverity.core.benchmark.toBenchmarkRun
@@ -15,7 +16,10 @@ import com.siliconverity.benchmark.storage.StorageDurableWriteWorkload
 import com.siliconverity.benchmark.storage.StorageRandomWriteFsyncWorkload
 import com.siliconverity.nativecpu.CpuIntegerWorkload
 import com.siliconverity.nativecpu.Fp32FmaWorkload
+import com.siliconverity.nativegpu.GpuWorkload
+import com.siliconverity.nativegpu.VulkanBench
 import com.siliconverity.nativememory.MemoryCopyWorkload
+import com.siliconverity.nativememory.MemoryLatencyBench
 import com.siliconverity.nativememory.MemoryReadWorkload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +33,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     private val env = AndroidBenchmarkEnvironment(application)
     private val engine = BenchmarkEngine({ System.nanoTime() }, env)
     private val benchDir = File(application.filesDir, "bench")
+    private val gpuBench = VulkanBench()
     private val workloads: List<Workload> = listOf(
         CpuIntegerWorkload(),
         Fp32FmaWorkload(),
@@ -41,6 +46,9 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         StorageDurableWriteWorkload(benchDir),
         StorageRandomWriteFsyncWorkload(benchDir),
         StorageReadWorkload(benchDir),
+        GpuVulkanWorkload(gpuBench, GpuWorkload.FP32_INDEPENDENT, "vulkan.fp32.independent"),
+        GpuVulkanWorkload(gpuBench, GpuWorkload.FP32_DEPENDENCY, "vulkan.fp32.dependency"),
+        GpuVulkanWorkload(gpuBench, GpuWorkload.BUFFER_THROUGHPUT, "vulkan.buffer.throughput"),
     )
     private val store = BenchmarkRunStore(application.filesDir)
 
@@ -67,6 +75,20 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                     }
                     val saved = runCatching { store.save(manifest.toBenchmarkRun()).name }.getOrNull()
                     results += RunResult(manifest, saved)
+                }
+                runCatching {
+                    val points = MemoryLatencyBench.run()
+                    store.save(
+                        MemoryLatencyResult(
+                            runId = env.runId(),
+                            startedAt = env.nowIso(),
+                            deviceModel = env.deviceModel,
+                            socReported = env.socReported,
+                            androidVersion = env.androidVersion,
+                            abi = env.abi,
+                            points = points,
+                        ).toBenchmarkRun(),
+                    )
                 }
                 _state.value = BenchmarkUiState.Done(results, error, computeScore(results))
             } finally {
