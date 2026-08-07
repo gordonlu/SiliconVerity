@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,7 +34,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -90,7 +94,7 @@ fun HomeScreen(
     val brand = factValue(hardwareFacts, "device.brand") ?: ""
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (brand.isNotBlank()) BrandWatermark(brand)
+        if (brand.isNotBlank()) BrandWatermark()
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
@@ -144,35 +148,22 @@ fun HomeScreen(
     }
 }
 
-/** 45° 斜向品牌水印背景层 (20% 透明度, 英文加粗, 平铺拉满屏幕)。 */
+/** 45° 斜向品牌水印背景层: 单个白色 logo 铺满屏幕, 20% 透明度。 */
 @Composable
-private fun BrandWatermark(text: String) {
-    val color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-    val textMeasurer = rememberTextMeasurer()
-    val layout = textMeasurer.measure(
-        AnnotatedString(text.uppercase()),
-        style = TextStyle(
-            color = color,
-            fontSize = 44.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = FontFamily.SansSerif,
-            letterSpacing = 2.sp,
-        ),
-    )
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        rotate(degrees = 45f, pivot = center) {
-            val step = 200f
-            val span = size.maxDimension * 2f
-            var x = -span
-            while (x < span) {
-                var y = -span
-                while (y < span) {
-                    drawText(layout, topLeft = Offset(x, y))
-                    y += step
-                }
-                x += step
-            }
-        }
+private fun BrandWatermark() {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val diag = kotlin.math.sqrt(
+            maxWidth.value * maxWidth.value + maxHeight.value * maxHeight.value,
+        )
+        Image(
+            painter = painterResource(R.drawable.ic_logo),
+            contentDescription = null,
+            modifier = Modifier
+                .size(diag.dp)
+                .rotate(45f)
+                .align(Alignment.Center),
+            colorFilter = ColorFilter.tint(Color.White.copy(alpha = 0.2f)),
+        )
     }
 }
 
