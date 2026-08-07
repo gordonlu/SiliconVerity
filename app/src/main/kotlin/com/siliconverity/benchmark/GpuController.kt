@@ -93,6 +93,7 @@ class GpuController(application: Application) : AndroidViewModel(application) {
         val cv = r.coefficientOfVariation ?: 1.0
         val validity = when {
             !valid -> ValidityLevel.INVALID
+            r.retestNeeded -> ValidityLevel.RETEST_RECOMMENDED
             cv <= 0.03 -> ValidityLevel.STABLE
             cv <= 0.07 -> ValidityLevel.VARIABLE
             else -> ValidityLevel.RETEST_RECOMMENDED

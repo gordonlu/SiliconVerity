@@ -45,6 +45,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.siliconverity.benchmark.BenchmarkController
 import com.siliconverity.core.benchmark.BenchmarkUiState
+import com.siliconverity.core.benchmark.toBenchmarkRun
 import com.siliconverity.core.designsystem.SvTheme
 import com.siliconverity.feature.hardware.HardwareScreen
 import com.siliconverity.feature.hardware.HardwareViewModel
@@ -208,11 +209,18 @@ private fun AppShell() {
                     return@composable
                 }
                 val context = LocalContext.current
+                val gpuStatus = remember(done) {
+                    com.siliconverity.core.designsystem.GpuStatusDetector.display(
+                        context,
+                        done.results.map { it.manifest.toBenchmarkRun() },
+                    )
+                }
                 ResultScreen(
                     score = done.score,
                     sessionStartedAt = done.sessionStartedAt,
                     error = done.error,
                     hardwareFacts = hardwareState.facts,
+                    gpuStatus = gpuStatus,
                     onRunAgain = {
                         benchmarkVm.run()
                     },
@@ -309,6 +317,7 @@ private fun AppShell() {
                     sessionStartedAt = session.startedAt,
                     error = null,
                     hardwareFacts = hardwareState.facts,
+                    gpuStatus = session.gpuStatus,
                     onRunAgain = {
                         nav.popBackStack()
                         benchmarkVm.run()
@@ -383,10 +392,15 @@ private fun SvBottomBar(nav: NavController) {
             NavigationBarItem(
                 selected = selected,
                 onClick = {
-                    nav.navigate(route) {
-                        popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+                    if (route == "home" && currentRoute != null && currentRoute != "home") {
+                        // 在结果页/子页面时, 点首页 tab 关闭当前页回首页
+                        nav.popBackStack("home", inclusive = false)
+                    } else {
+                        nav.navigate(route) {
+                            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 },
                 icon = { Icon(icon, contentDescription = label) },

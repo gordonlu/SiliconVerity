@@ -32,8 +32,8 @@ class GpuVulkanWorkload(
         dataSize = 0L,
         threadPolicy = "gpu",
         timingMethod = "gpu-timestamp",
-        warmupMinMillis = 4_000L,
-        warmupMaxMillis = 8_000L,
+        warmupMinMillis = 6_000L,
+        warmupMaxMillis = 16_000L,
         warmupConvergeThreshold = 0.05,
         measurementRepetitions = 5,
         correctnessCheck = "checksum-valid",
@@ -42,10 +42,24 @@ class GpuVulkanWorkload(
 
     private var lastError: String? = null
 
+    private var lastRetest = false
+
     override fun warmUp() {}
 
     override fun runOnce(): Sample {
-        val r = runCatching { bench.run(variant, 300) }.getOrNull()
+        var r = runCatching { bench.run(variant, 300) }.getOrNull()
+        // native 检测到 P-state transition/双峰 -> 内部再跑最多 2 次
+        if (r?.retestNeeded == true) {
+            repeat(2) {
+                val retry = runCatching { bench.run(variant, 300) }.getOrNull() ?: return@repeat
+                if (!retry.retestNeeded && retry.metricValue != null) {
+                    r = retry
+                    return@repeat
+                }
+                r = retry
+            }
+        }
+        lastRetest = r?.retestNeeded == true
         if (r == null) {
             lastError = "vulkan run failed"
             return Sample(0, 0L, 1_000_000_000L, "gpu")
@@ -61,8 +75,8 @@ class GpuVulkanWorkload(
     }
 
     override fun correctnessCheck(): CorrectnessResult = CorrectnessResult(
-        passed = lastError == null,
+        passed = lastError == null && !lastRetest,
         kind = checksumKind,
-        reason = lastError,
+        reason = lastError ?: if (lastRetest) "GPU P-state transition/bimodal after retry" else null,
     )
 }

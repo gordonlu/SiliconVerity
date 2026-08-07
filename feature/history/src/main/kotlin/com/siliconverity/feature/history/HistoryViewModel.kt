@@ -24,6 +24,7 @@ data class SessionAggregate(
     val stableCount: Int,
     val variableCount: Int,
     val total: Int,
+    val gpuStatus: String? = null,
 )
 
 /** 按 sessionId 分组 (latency 等独立运行归入自身)。 */
@@ -68,6 +69,7 @@ class HistoryViewModel(application: Application) : AndroidViewModel(application)
                     stableCount = sorted.count { it.validity.stability == ValidityLevel.STABLE },
                     variableCount = sorted.count { it.validity.stability == ValidityLevel.VARIABLE },
                     total = sorted.size,
+                    gpuStatus = com.siliconverity.core.designsystem.GpuStatusDetector.display(getApplication(), sorted),
                 )
             }
             _state.value = HistoryUiState(loading = false, runs = runs, sessions = sessions)

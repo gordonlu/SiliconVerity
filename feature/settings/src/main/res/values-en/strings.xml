@@ -17,7 +17,7 @@
     <string name="settings_on">ON</string>
     <string name="settings_off">OFF</string>
     <string name="settings_bench_desc_1">Scoring SVS-1.0: reference device = 10,000. Item = 1000 × clamp(measured/reference, 0.2, 5.0); category = weighted geometric mean; overall = CPU 30% / GPU 35% / Memory 20% / AppIO 15%.</string>
-    <string name="settings_bench_desc_2">Full suite 14+1: CPU×5, memory×2, storage×4, GPU×3 (Vulkan Compute), memory latency.</string>
-    <string name="settings_bench_desc_3">Overall score stays unavailable until reference pack SV-REF-2026-08-A is frozen; RETEST/INVALID items are excluded from scoring.</string>
+    <string name="settings_bench_desc_2">Full suite 15 items: CPU×5, memory×3 (incl. latency curve), storage×4, GPU×3 (Vulkan Compute).</string>
+    <string name="settings_bench_desc_3">Reference pack SV-REF-2026-08-A frozen (8 runs on the reference device); item = 1000 × clamp(measured/reference, 0.2, 5.0); RETEST/INVALID items excluded from scoring.</string>
     <string name="settings_bench_desc_4">Measurement: adaptive 5/7/11 rounds after warmup convergence, median reported. CV ≤ 3% STABLE, ≤ 7% VARIABLE, &gt; 7% RETEST_RECOMMENDED; failed correctness check is INVALID.</string>
 </resources>

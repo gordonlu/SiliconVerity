@@ -10,6 +10,8 @@
     <string name="compare_mismatch">Different workloads selected — pick two runs of the same workload</string>
     <string name="compare_sessions">%1$s  vs  %2$s</string>
     <string name="compare_overall">Overall</string>
+    <string name="compare_categories">Category comparison</string>
+    <string name="compare_workloads">Per-workload (vs reference; vertical line = reference)</string>
     <string name="history_sv_performance">SV PERFORMANCE</string>
     <string name="history_cat_memory">Memory</string>
     <string name="history_cat_io">App I/O</string>

@@ -23,6 +23,14 @@ object SessionScorer {
         return runCatching { ScoringEngine(p).score(runs) }.getOrNull()
     }
 
+    /** 参考值 (原始单位); 未加载/未收录返回 null。 */
+    fun refValue(context: Context, workloadId: String): Double? {
+        val p = pack ?: synchronized(this) {
+            pack ?: loadPack(context).also { pack = it }
+        } ?: return null
+        return p.references[workloadId]?.takeIf { it > 0.0 }
+    }
+
     private fun loadPack(context: Context): ScorePack? = runCatching {
         val stream = context.assets.open("scorepacks/svs-1.0.json")
         val text = stream.bufferedReader().use { it.readText() }

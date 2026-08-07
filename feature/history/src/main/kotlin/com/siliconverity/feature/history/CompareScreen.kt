@@ -1,15 +1,21 @@
 package com.siliconverity.feature.history
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -169,52 +175,112 @@ private fun SessionComparisonPanel(a: SessionAggregate, b: SessionAggregate) {
                 Kv(stringResource(R.string.compare_overall), stringResource(R.string.history_score_not_generated))
             }
 
-            // 分类分
+            // 分类分: 双条图 + 数字
+            Spacer(Modifier.height(SvSpacing.Sm))
+            Text(stringResource(R.string.compare_categories), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
             listOf(
                 "CPU" to (a.score?.cpuScore to b.score?.cpuScore),
                 "GPU" to (a.score?.gpuScore to b.score?.gpuScore),
                 stringResource(R.string.history_cat_memory) to (a.score?.memoryScore to b.score?.memoryScore),
                 stringResource(R.string.history_cat_io) to (a.score?.appIoScore to b.score?.appIoScore),
             ).forEach { (label, pair) ->
-                val av = pair.first?.times(10)
-                val bv = pair.second?.times(10)
-                if (av != null && bv != null) {
-                    DeltaRow(
-                        label = label,
-                        aText = "%,d".format(av),
-                        bText = "%,d".format(bv),
-                        delta = (bv - av).toDouble() / av * 100.0,
-                    )
-                } else {
-                    Kv(label, "—")
-                }
+                val av = pair.first?.times(10) ?: 0
+                val bv = pair.second?.times(10) ?: 0
+                DualBarRow(
+                    label = label,
+                    aFraction = av / 20_000f,
+                    bFraction = bv / 20_000f,
+                    aText = if (pair.first != null) "%,d".format(av) else "—",
+                    bText = if (pair.second != null) "%,d".format(bv) else "—",
+                )
             }
 
             Spacer(Modifier.height(SvSpacing.Sm))
             HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
             Spacer(Modifier.height(SvSpacing.Sm))
 
-            // 逐项对比 (按 workloadId 对齐)
+            // 逐项对比: 相对参考归一化双条图 (参考线 = 1.0)
+            Text(stringResource(R.string.compare_workloads), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
             val aByW = a.runs.associateBy { it.identity.workloadId }
             val bByW = b.runs.associateBy { it.identity.workloadId }
             val ids = (aByW.keys + bByW.keys).sorted()
             ids.forEach { w ->
                 val ar = aByW[w]
                 val br = bByW[w]
-                if (ar != null && br != null && ar.payloadSummaryMedian() != 0.0) {
-                    DeltaRow(
-                        label = stringResource(SvWorkloads.nameRes(w)),
-                        aText = ar.primaryMetric(),
-                        bText = br.primaryMetric(),
-                        delta = (br.payloadSummaryMedian() - ar.payloadSummaryMedian()) / ar.payloadSummaryMedian() * 100.0,
-                        deltaSuffix = null,
-                    )
-                } else {
-                    Kv(stringResource(SvWorkloads.nameRes(w)), "${ar?.primaryMetric() ?: "—"} / ${br?.primaryMetric() ?: "—"}")
-                }
+                val aMed = ar?.payloadSummaryMedian() ?: 0.0
+                val bMed = br?.payloadSummaryMedian() ?: 0.0
+                val ref = com.siliconverity.core.designsystem.SessionScorer.refValue(
+                    androidx.compose.ui.platform.LocalContext.current,
+                    w,
+                ) ?: 0.0
+                DualBarRow(
+                    label = stringResource(SvWorkloads.nameRes(w)),
+                    aFraction = if (ref > 0) (aMed / ref).toFloat() else 0f,
+                    bFraction = if (ref > 0) (bMed / ref).toFloat() else 0f,
+                    aText = ar?.primaryMetric() ?: "—",
+                    bText = br?.primaryMetric() ?: "—",
+                    referenceLine = true,
+                )
             }
         }
     }
+}
+
+/** A/B 双条对比图: 上条 = A, 下条 = B; 可选参考线 (参考线=0.5 处, 即 fraction=1.0)。 */
+@Composable
+private fun DualBarRow(
+    label: String,
+    aFraction: Float,
+    bFraction: Float,
+    aText: String,
+    bText: String,
+    referenceLine: Boolean = false,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+            Text("A $aText  ·  B $bText", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        androidx.compose.foundation.layout.BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(14.dp)
+                .background(MaterialTheme.colorScheme.surfaceContainer, MaterialTheme.shapes.small),
+        ) {
+            val trackWidth = maxWidth
+            if (referenceLine) {
+                // 参考线: 轨道中点 (fraction = 1.0)
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .fillMaxHeight()
+                        .align(Alignment.CenterStart)
+                        .offset(x = trackWidth * 0.5f - 0.5.dp)
+                        .background(MaterialTheme.colorScheme.outline),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight(0.45f)
+                    .fillMaxWidth(aFraction.coerceIn(0f, 2f) / 2f)
+                    .align(Alignment.TopStart)
+                    .background(CompareColors.A, MaterialTheme.shapes.small),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight(0.45f)
+                    .fillMaxWidth(bFraction.coerceIn(0f, 2f) / 2f)
+                    .align(Alignment.BottomStart)
+                    .background(CompareColors.B, MaterialTheme.shapes.small),
+            )
+        }
+    }
+}
+
+/** A/B 对比色。 */
+private object CompareColors {
+    val A = androidx.compose.ui.graphics.Color(0xFF8AB4F8)
+    val B = androidx.compose.ui.graphics.Color(0xFFD7AEFB)
 }
 
 @Composable
@@ -227,13 +293,17 @@ private fun DeltaRow(label: String, aText: String, bText: String, delta: Double,
             Text("B  $bText", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
         }
         Text(
-            "${if (delta >= 0) "+" else ""}%.2f$deltaSuffix".format(delta),
+            formatDelta(delta, deltaSuffix),
             style = MaterialTheme.typography.bodySmall,
             color = deltaColor,
             fontWeight = FontWeight.SemiBold,
         )
     }
 }
+
+/** delta 展示格式化 (纯函数, 可单测; suffix 可空, 含 % 需转义)。 */
+internal fun formatDelta(delta: Double, suffix: String?): String =
+    "${if (delta >= 0) "+" else ""}%.2f${suffix?.replace("%", "%%") ?: ""}".format(delta)
 
 @Composable
 private fun svTime(iso: String): String =

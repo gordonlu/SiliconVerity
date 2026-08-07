@@ -18,6 +18,7 @@ data class NativeGpuResult(
     val arithType: String?,
     val arithContract: String?,
     val invalidReason: String?,
+    val retestNeeded: Boolean = false,
 ) {
     companion object {
         fun parse(s: String): NativeGpuResult {
@@ -45,6 +46,7 @@ data class NativeGpuResult(
                 arithType = g("arithType"),
                 arithContract = g("arithContract"),
                 invalidReason = g("invalidReason"),
+                retestNeeded = g("retest") == "1",
             )
         }
     }

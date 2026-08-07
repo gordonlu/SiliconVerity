@@ -1,18 +1,45 @@
 #include <jni.h>
 #include <vulkan/vulkan.h>
+#include <android/performance_hint.h>
 #include <ctime>
 #include <cstdint>
 #include <cstring>
 #include <cmath>
 #include <cstdio>
+#include <dlfcn.h>
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <sys/syscall.h>
+#include <unistd.h>
 #include "fp32_spv.h"
 #include "fp32_independent_spv.h"
 #include "buffer_triad_spv.h"
 
 namespace {
+
+// ---- ADPF (API 36 notifyWorkloadIncrease, dlsym 运行时解析) ----
+typedef int (*NotifyWorkloadIncreaseFn)(APerformanceHintSession*, bool, bool, const char*);
+static NotifyWorkloadIncreaseFn g_notifyWorkloadIncrease = nullptr;
+static APerformanceHintSession* g_hintSession = nullptr;
+
+static void announceGpuLoad() {
+    if (!g_notifyWorkloadIncrease) {
+        void* lib = dlopen("libandroid.so", RTLD_NOW);
+        if (!lib) return;
+        g_notifyWorkloadIncrease = (NotifyWorkloadIncreaseFn)dlsym(lib, "APerformanceHint_notifyWorkloadIncrease");
+        if (!g_notifyWorkloadIncrease) return;
+    }
+    if (!g_hintSession) {
+        APerformanceHintManager* mgr = APerformanceHint_getManager();
+        if (!mgr) return;
+        static pid_t tid = (pid_t)syscall(SYS_gettid);
+        g_hintSession = APerformanceHint_createSession(mgr, &tid, 1, 30000000LL);
+    }
+    if (g_hintSession) {
+        g_notifyWorkloadIncrease(g_hintSession, false, true, "sv_gpu_benchmark");
+    }
+}
 
 static uint64_t monotonic_nanos() {
     timespec ts;
@@ -32,6 +59,15 @@ static double medianD(std::vector<double> v) {
     std::sort(v.begin(), v.end());
     size_t n = v.size();
     return (n % 2 == 1) ? v[n / 2] : (v[n / 2 - 1] + v[n / 2]) / 2.0;
+}
+
+static double robustCv(std::vector<double> v) {
+    if (v.empty()) return 0.0;
+    double med = medianD(v);
+    if (med <= 0.0) return 0.0;
+    std::vector<double> dev;
+    for (auto x : v) dev.push_back(std::fabs(x - med));
+    return medianD(dev) / med;
 }
 
 static uint64_t fnv1a64(const unsigned char* d, size_t n) {
@@ -309,6 +345,7 @@ struct WorkResult {
     std::string spirvHash;
     std::string arithType;
     std::string arithContract;
+    bool retestNeeded = false;
 };
 
 static std::string vkVersionStr(uint32_t v) {
@@ -411,7 +448,47 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
 
     bool useGpuTs = h.gpuTimestampUsable();
 
-    // calibrate iterations to hit ~targetMs (single dispatch, K=1)
+    // GPU workload 宣告 (Android 16 ADPF: 提前告知 GPU 负载将显著增加)
+    announceGpuLoad();
+
+    // ==== GPU BOOST SEEKING ====
+    // 连续跑 kernel 直到进入"高性能稳定平台": 最后 3 轮 CV<3% 且 >= peak*97%,
+    // 至少 1.5s, 最长 4s。移动 GPU DVFS 从低 P-state 爬升需要时间。
+    const uint32_t PRIME_MIN_MS = 1500;
+    const uint32_t PRIME_MAX_MS = 4000;
+    const double plateauFlop = (double)vec4Count * 1024 * fmaPerIter * 2.0;
+
+    auto runRoundGflops = [&](uint32_t iterations) -> double {
+        pcData.iterations = iterations;
+        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+        if (!useGpuTs || t.gpuExecNs <= 0) return 0.0;
+        return (double)vec4Count * iterations * fmaPerIter * 2.0 / (double)t.gpuExecNs;
+    };
+
+    double plateauGflops = 0.0;
+    {
+        std::vector<double> window;
+        double peak = 0.0;
+        uint64_t primeStart = monotonic_nanos();
+        while (true) {
+            double gf = runRoundGflops(1024);
+            peak = std::max(peak, gf);
+            window.push_back(gf);
+            if (window.size() > 3) window.erase(window.begin());
+            uint64_t elapsed = monotonic_nanos() - primeStart;
+            if (elapsed >= PRIME_MIN_MS * 1000000ull && window.size() == 3) {
+                bool allHigh = true;
+                for (auto w : window) if (w < peak * 0.97) { allHigh = false; break; }
+                if (robustCv(window) < 0.03 && allHigh && peak > 0.0) {
+                    plateauGflops = medianD(window);
+                    break;
+                }
+            }
+            if (elapsed >= PRIME_MAX_MS * 1000000ull) { plateauGflops = peak; break; }
+        }
+    }
+
+    // ==== CALIBRATION (稳定平台下, 单 dispatch K=1) ====
     pcData.iterations = 1024;
     RoundTimings one = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
     uint32_t iters = 1024;
@@ -423,17 +500,76 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
     }
     pcData.iterations = iters;
 
+    // ==== MEASURE (settle 1 轮 + 7 轮, transition/双峰检测自动重来) ====
     std::vector<uint64_t> gpuTimes, recTimes, subTimes, waitTimes;
-    for (int i = 0; i < 3; i++) {
+    std::vector<double> mGflops;
+    bool transitionOrBimodal = false;
+
+    for (int attempt = 0; attempt < 2; attempt++) {
+        // settle
         h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+        gpuTimes.clear(); recTimes.clear(); subTimes.clear(); waitTimes.clear(); mGflops.clear();
+
+        for (int i = 0; i < 7; i++) {
+            RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+            gpuTimes.push_back(t.gpuExecNs);
+            recTimes.push_back(t.commandRecordingNs);
+            subTimes.push_back(t.queueSubmitNs);
+            waitTimes.push_back(t.completionWaitNs);
+            if (useGpuTs && t.gpuExecNs > 0) {
+                mGflops.push_back((double)vec4Count * iters * fmaPerIter * 2.0 / (double)t.gpuExecNs);
+            }
+        }
+
+        // 迟到升频: measurement 中出现显著高于 warmup 平台的样本 -> P-state transition
+        transitionOrBimodal = false;
+        if (useGpuTs && plateauGflops > 0.0 && mGflops.size() >= 7) {
+            for (auto gf : mGflops) {
+                if (gf > plateauGflops * 1.08) { transitionOrBimodal = true; break; }
+            }
+        }
+        // 双峰: 低 3 均值与高 3 均值差 > 12% (如 4.5/4.5/2.3/2.3/4.5/2.3/4.5)
+        if (!transitionOrBimodal && mGflops.size() >= 6) {
+            std::vector<double> sorted = mGflops;
+            std::sort(sorted.begin(), sorted.end());
+            double lo = (sorted[0] + sorted[1] + sorted[2]) / 3.0;
+            double hi = (sorted[sorted.size() - 3] + sorted[sorted.size() - 2] + sorted[sorted.size() - 1]) / 3.0;
+            double med = medianD(mGflops);
+            if (med > 0.0 && (hi - lo) / med > 0.12) transitionOrBimodal = true;
+        }
+
+        if (!transitionOrBimodal) break;
+        // 重新 boost -> calibrate -> measure (最多 1 次重来)
+        if (attempt == 0) {
+            {
+                std::vector<double> window;
+                double peak = 0.0;
+                uint64_t primeStart = monotonic_nanos();
+                while (true) {
+                    double gf = runRoundGflops(1024);
+                    peak = std::max(peak, gf);
+                    window.push_back(gf);
+                    if (window.size() > 3) window.erase(window.begin());
+                    uint64_t elapsed = monotonic_nanos() - primeStart;
+                    if (elapsed >= PRIME_MIN_MS * 1000000ull && window.size() == 3) {
+                        bool allHigh = true;
+                        for (auto w : window) if (w < peak * 0.97) { allHigh = false; break; }
+                        if (robustCv(window) < 0.03 && allHigh && peak > 0.0) { plateauGflops = medianD(window); break; }
+                    }
+                    if (elapsed >= PRIME_MAX_MS * 1000000ull) { plateauGflops = peak; break; }
+                }
+            }
+            one = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+            if (useGpuTs && one.gpuExecNs > 0) {
+                uint64_t target = (uint64_t)targetMs * 1000000ull;
+                iters = (uint32_t)((double)1024.0 * (double)target / (double)one.gpuExecNs);
+                if (iters < 1024) iters = 1024;
+                if (iters > 100000000u) iters = 100000000u;
+            }
+            pcData.iterations = iters;
+        }
     }
-    for (int i = 0; i < 7; i++) {
-        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-        gpuTimes.push_back(t.gpuExecNs);
-        recTimes.push_back(t.commandRecordingNs);
-        subTimes.push_back(t.queueSubmitNs);
-        waitTimes.push_back(t.completionWaitNs);
-    }
+    if (transitionOrBimodal) r.retestNeeded = true;
 
     r.medianNs = medianU64(gpuTimes);
     r.commandRecordingNs = medianU64(recTimes);
@@ -611,6 +747,7 @@ static std::string resultToStr(const WorkResult& r) {
     s += "spirvHash="; s += r.spirvHash; s += ";";
     s += "arithType="; s += r.arithType; s += ";";
     s += "arithContract="; s += r.arithContract; s += ";";
+    s += "retest="; s += (r.retestNeeded ? "1" : "0"); s += ";";
     s += "invalidReason="; s += r.invalidReason;
     return s;
 }

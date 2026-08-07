@@ -43,6 +43,7 @@ class CompareViewModel(application: Application) : AndroidViewModel(application)
                     stableCount = sorted.count { it.validity.stability == ValidityLevel.STABLE },
                     variableCount = sorted.count { it.validity.stability == ValidityLevel.VARIABLE },
                     total = sorted.size,
+                    gpuStatus = com.siliconverity.core.designsystem.GpuStatusDetector.display(getApplication(), sorted),
                 )
             }
             _sessions.value = sessions

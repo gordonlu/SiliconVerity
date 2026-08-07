@@ -27,6 +27,7 @@ kotlin {
 }
 
 dependencies {
+    testImplementation(libs.junit)
     implementation(project(":core:model"))
     implementation(project(":core:benchmark"))
     implementation(project(":core:storage"))

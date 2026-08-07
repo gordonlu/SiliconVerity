@@ -215,8 +215,15 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                         break
                     }
                     // 外部干扰 (来电/推送/后台任务) 会导致高 CV -> RETEST。
-                    // 自动重测最多 2 次取最优, 干扰过去后恢复 STABLE; 仍高才保留 RETEST。
-                    if (manifest != null && manifest.validityLevel == ValidityLevel.RETEST_RECOMMENDED) {
+                    // GPU workload 明显低于"本机历史基线" (疑似半速/节能, 与参考值无关)
+                    // 自动重测最多 2 次取最优; 首次运行无基线则仅记录。
+                    val gpuLowVsBaseline = item.workloadId.startsWith("vulkan.") && runCatching {
+                        val base = gpuBaseline(item.workloadId) ?: return@runCatching false
+                        base > 0.0 && manifest.median / base < 0.75
+                    }.getOrDefault(false)
+                    if (manifest != null &&
+                        (manifest.validityLevel == ValidityLevel.RETEST_RECOMMENDED || gpuLowVsBaseline)
+                    ) {
                         var current: com.siliconverity.core.benchmark.RunManifest = manifest
                         for (attempt in 1..2) {
                             progressState(BenchmarkPhase.FINALIZING, null, null)
@@ -231,7 +238,11 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                                     warnings = retry.warnings + "auto-retry #$attempt (高波动, 可能外部干扰)",
                                 )
                             }
-                            if (current.validityLevel != ValidityLevel.RETEST_RECOMMENDED) break
+                            val ratioOk = !item.workloadId.startsWith("vulkan.") || runCatching {
+                                val base = gpuBaseline(item.workloadId) ?: return@runCatching true
+                                base <= 0.0 || current.median / base >= 0.75
+                            }.getOrDefault(true)
+                            if (current.validityLevel != ValidityLevel.RETEST_RECOMMENDED && ratioOk) break
                         }
                         manifest = current
                     }
@@ -269,6 +280,17 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         workloadId.startsWith("mem.") -> BenchmarkCategory.MEMORY
         workloadId.startsWith("vulkan.") -> BenchmarkCategory.GPU
         else -> BenchmarkCategory.APP_IO
+    }
+
+    /** 本机历史基线: 该 workload 历史 session-median 的中位数 (不含本次, 独立于参考包)。 */
+    private fun gpuBaseline(workloadId: String): Double? {
+        val runs = runCatching { store.list() }.getOrDefault(emptyList())
+        val medians = runs
+            .filter { it.identity.workloadId == workloadId }
+            .mapNotNull { (it.payload as? com.siliconverity.core.benchmark.BenchmarkPayload.Scalar)?.summary?.median }
+            .sorted()
+        if (medians.isEmpty()) return null
+        return medians[medians.size / 2]
     }
 
     private fun captureEnvironment(): LiveEnvironmentSnapshot {

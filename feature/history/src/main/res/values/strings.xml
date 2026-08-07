@@ -10,6 +10,8 @@
     <string name="compare_mismatch">选择了不同项目，请选同一项目的两次运行</string>
     <string name="compare_sessions">%1$s  vs  %2$s</string>
     <string name="compare_overall">综合分</string>
+    <string name="compare_categories">分类对比</string>
+    <string name="compare_workloads">逐项对比（相对参考，竖线 = 参考水平）</string>
     <string name="history_sv_performance">SV 性能</string>
     <string name="history_cat_memory">内存</string>
     <string name="history_cat_io">应用 I/O</string>

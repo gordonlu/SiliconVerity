@@ -53,6 +53,7 @@ fun ResultScreen(
     sessionStartedAt: String?,
     error: String?,
     hardwareFacts: List<HardwareFact>,
+    gpuStatus: String? = null,
     onRunAgain: () -> Unit,
     onHistory: () -> Unit,
     onShare: () -> Unit,
@@ -111,6 +112,17 @@ fun ResultScreen(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            if (gpuStatus != null) {
+                item {
+                    val low = gpuStatus.contains("未满载") || gpuStatus.contains("under")
+                    Text(
+                        gpuStatus,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (low) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (low) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
             }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm)) {

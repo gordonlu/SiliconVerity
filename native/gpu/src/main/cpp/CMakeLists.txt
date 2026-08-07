@@ -58,4 +58,5 @@ target_compile_options(sv_gpu PRIVATE -O3 -ffp-contract=fast)
 
 find_library(vulkan-lib vulkan REQUIRED)
 find_library(log-lib log REQUIRED)
-target_link_libraries(sv_gpu ${vulkan-lib} ${log-lib})
+find_library(android-lib android REQUIRED)
+target_link_libraries(sv_gpu ${vulkan-lib} ${log-lib} ${android-lib})
