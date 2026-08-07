@@ -132,8 +132,10 @@ private fun AppShell() {
             }
             composable("benchmark-result") {
                 val done = benchmarkState as? BenchmarkUiState.Done
+                LaunchedEffect(done == null) {
+                    if (done == null) nav.popBackStack()
+                }
                 if (done == null) {
-                    LaunchedEffect(Unit) { nav.popBackStack() }
                     return@composable
                 }
                 val context = LocalContext.current
@@ -141,7 +143,6 @@ private fun AppShell() {
                     done = done,
                     hardwareFacts = hardwareState.facts,
                     onRunAgain = {
-                        nav.popBackStack()
                         benchmarkVm.run()
                     },
                     onHistory = {

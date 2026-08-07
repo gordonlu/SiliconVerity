@@ -85,7 +85,8 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         job?.cancel()
         job = viewModelScope.launch(Dispatchers.Default) {
             try {
-                _state.value = BenchmarkUiState.Scoring
+                // 离开 Done: 结果页守卫据此 pop 回首页, 避免双 pop 弹空栈
+                _state.value = BenchmarkUiState.Idle
                 val sessionId = java.util.UUID.randomUUID().toString()
                 sessionStartedAt = env.nowIso()
                 val results = mutableListOf<RunResult>()
