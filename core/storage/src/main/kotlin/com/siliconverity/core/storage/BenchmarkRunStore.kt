@@ -36,7 +36,7 @@ class BenchmarkRunStore(filesDir: File) {
         val old = runCatching { runStore.list().map { it.toBenchmarkRun() } }.getOrDefault(emptyList()) +
             runCatching { sustainedStore.list().map { it.toBenchmarkRun() } }.getOrDefault(emptyList()) +
             runCatching { latencyStore.list().map { it.toBenchmarkRun() } }.getOrDefault(emptyList())
-        return (bruns + old).sortedByDescending { it.startedAt }
+        return (bruns + old).sortedByDescending { it.startedAt }.take(200)
     }
 
     fun load(runId: String): BenchmarkRun? = list().firstOrNull { it.identity.runId == runId }
