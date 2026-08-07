@@ -220,7 +220,9 @@ private fun MetricMatrix(facts: List<HardwareFact>) {
     val memTotal = bytesHuman(memTotalBytes?.toString())
     val storageTotal = bytesHuman(factValue(facts, "storage.fs.total"))
     val storageAvail = bytesHuman(factValue(facts, "storage.fs.available"))
-    val thermal = factValue(facts, "thermal.status")?.let { SvThermalStatus.short(it) } ?: "—"
+    val thermal = factValue(facts, "thermal.status") ?: "—"
+    val thermalShort = if (thermal != "—") SvThermalStatus.short(thermal) else "—"
+    val thermalDetail = if (thermal != "—") SvThermalStatus.detail(thermal) else null
     val batteryTemp = factValue(facts, "battery.temperature")?.toDoubleOrNull()?.let { "%.1f°C".format(it) } ?: "—"
     val batteryLevel = factValue(facts, "battery.level")?.let { "$it%" } ?: "—"
     val android = factValue(facts, "device.android_version") ?: "—"
@@ -235,7 +237,7 @@ private fun MetricMatrix(facts: List<HardwareFact>) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_storage), value = storageTotal, unit = stringResource(R.string.home_unit_total), sub = "$storageAvail ${stringResource(R.string.home_unit_free)}")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
-                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_thermal), value = thermal, unit = stringResource(R.string.home_unit_status))
+                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_thermal), value = thermalShort, unit = stringResource(R.string.home_unit_status), sub = thermalDetail)
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
             Row(modifier = Modifier.fillMaxWidth()) {

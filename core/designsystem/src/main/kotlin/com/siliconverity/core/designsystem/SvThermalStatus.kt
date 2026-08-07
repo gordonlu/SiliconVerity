@@ -1,30 +1,35 @@
 package com.siliconverity.core.designsystem
 
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+
 /**
- * Thermal Status 的 UI 文案映射。
+ * Thermal Status 的 UI 文案映射 (本地化)。
  * 原始枚举 (NONE/LIGHT/...) 用于存储与调试, 不作为 UI 文案。
  */
 object SvThermalStatus {
 
+    @Composable
     fun short(status: String): String = when (status) {
-        "NONE" -> "NORMAL"
-        "LIGHT" -> "LIGHT"
-        "MODERATE" -> "MODERATE"
-        "SEVERE" -> "SEVERE"
-        "CRITICAL" -> "CRITICAL"
-        "EMERGENCY" -> "EMERGENCY"
-        "SHUTDOWN" -> "SHUTDOWN"
-        else -> "UNKNOWN"
+        "NONE" -> stringResource(R.string.sv_thermal_normal)
+        "LIGHT" -> stringResource(R.string.sv_thermal_light)
+        "MODERATE" -> stringResource(R.string.sv_thermal_moderate)
+        "SEVERE" -> stringResource(R.string.sv_thermal_severe)
+        "CRITICAL" -> stringResource(R.string.sv_thermal_critical)
+        "EMERGENCY" -> stringResource(R.string.sv_thermal_emergency)
+        "SHUTDOWN" -> stringResource(R.string.sv_thermal_shutdown)
+        else -> stringResource(R.string.sv_thermal_unknown)
     }
 
+    @Composable
     fun detail(status: String): String = when (status) {
-        "NONE" -> "正常，无明显热压力"
-        "LIGHT" -> "轻微热压力"
-        "MODERATE" -> "中度热压力"
-        "SEVERE" -> "严重热压力"
-        "CRITICAL" -> "临界热状态"
-        "EMERGENCY" -> "紧急热状态"
-        "SHUTDOWN" -> "触发关机保护"
-        else -> "无法识别"
+        "NONE" -> stringResource(R.string.sv_thermal_normal_detail)
+        "LIGHT" -> stringResource(R.string.sv_thermal_light_detail)
+        "MODERATE" -> stringResource(R.string.sv_thermal_moderate_detail)
+        "SEVERE" -> stringResource(R.string.sv_thermal_severe_detail)
+        "CRITICAL" -> stringResource(R.string.sv_thermal_critical_detail)
+        "EMERGENCY" -> stringResource(R.string.sv_thermal_emergency_detail)
+        "SHUTDOWN" -> stringResource(R.string.sv_thermal_shutdown_detail)
+        else -> stringResource(R.string.sv_thermal_unknown_detail)
     }
 }

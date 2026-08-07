@@ -13,6 +13,24 @@
     <string name="sv_yes">Yes</string>
     <string name="sv_no">No</string>
 
+    <!-- Thermal status -->
+    <string name="sv_thermal_normal">NORMAL</string>
+    <string name="sv_thermal_light">LIGHT</string>
+    <string name="sv_thermal_moderate">MODERATE</string>
+    <string name="sv_thermal_severe">SEVERE</string>
+    <string name="sv_thermal_critical">CRITICAL</string>
+    <string name="sv_thermal_emergency">EMERGENCY</string>
+    <string name="sv_thermal_shutdown">SHUTDOWN</string>
+    <string name="sv_thermal_unknown">UNKNOWN</string>
+    <string name="sv_thermal_normal_detail">No noticeable thermal pressure</string>
+    <string name="sv_thermal_light_detail">Light thermal pressure</string>
+    <string name="sv_thermal_moderate_detail">Moderate thermal pressure</string>
+    <string name="sv_thermal_severe_detail">Severe thermal pressure</string>
+    <string name="sv_thermal_critical_detail">Critical thermal state</string>
+    <string name="sv_thermal_emergency_detail">Emergency thermal state</string>
+    <string name="sv_thermal_shutdown_detail">Shutdown protection triggered</string>
+    <string name="sv_thermal_unknown_detail">Unrecognized</string>
+
     <!-- workload display names (technical terms, identical in both locales) -->
     <string name="wl_cat_cpu">CPU</string>
     <string name="wl_cat_memory">MEMORY</string>

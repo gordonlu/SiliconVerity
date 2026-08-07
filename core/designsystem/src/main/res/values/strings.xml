@@ -13,6 +13,24 @@
     <string name="sv_yes">是</string>
     <string name="sv_no">否</string>
 
+    <!-- 热状态 -->
+    <string name="sv_thermal_normal">正常</string>
+    <string name="sv_thermal_light">轻微</string>
+    <string name="sv_thermal_moderate">中度</string>
+    <string name="sv_thermal_severe">严重</string>
+    <string name="sv_thermal_critical">临界</string>
+    <string name="sv_thermal_emergency">紧急</string>
+    <string name="sv_thermal_shutdown">关机保护</string>
+    <string name="sv_thermal_unknown">无法识别</string>
+    <string name="sv_thermal_normal_detail">无明显热压力</string>
+    <string name="sv_thermal_light_detail">轻微热压力</string>
+    <string name="sv_thermal_moderate_detail">中度热压力</string>
+    <string name="sv_thermal_severe_detail">严重热压力</string>
+    <string name="sv_thermal_critical_detail">临界热状态</string>
+    <string name="sv_thermal_emergency_detail">紧急热状态</string>
+    <string name="sv_thermal_shutdown_detail">触发关机保护</string>
+    <string name="sv_thermal_unknown_detail">无法识别</string>
+
     <!-- workload 显示名 (技术术语, 中英一致) -->
     <string name="wl_cat_cpu">CPU</string>
     <string name="wl_cat_memory">内存</string>
