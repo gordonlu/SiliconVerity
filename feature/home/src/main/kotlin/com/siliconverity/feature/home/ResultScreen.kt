@@ -95,8 +95,9 @@ fun ResultScreen(
             }
             item {
                 val context = LocalContext.current
+                val zh = java.util.Locale.getDefault().language.startsWith("zh")
                 val soc = factValue(hardwareFacts, "soc.model")?.let {
-                    com.siliconverity.core.hardware.SocNameResolver.displayWithCode(context, it)
+                    com.siliconverity.core.hardware.SocNameResolver.displayWithCode(context, it, zh)
                 } ?: ""
                 val ram = factValue(hardwareFacts, "memory.totalMem")?.toLongOrNull()?.let { "%.0f GB".format(it / 1_000_000_000.0) } ?: ""
                 val android = factValue(hardwareFacts, "device.android_version") ?: ""

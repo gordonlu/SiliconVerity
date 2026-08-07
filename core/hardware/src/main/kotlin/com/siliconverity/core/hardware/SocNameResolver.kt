@@ -15,11 +15,16 @@ object SocNameResolver {
 
     data class SocEntry(
         val vendor: String,
+        val vendorZh: String,
         val name: String,
+        val nameZh: String,
         val code: String,
         val gpu: String,
         val maxFreqGhz: Double? = null,
-    )
+    ) {
+        fun displayName(useChinese: Boolean): String = if (useChinese) nameZh else name
+        fun displayVendor(useChinese: Boolean): String = if (useChinese) vendorZh else vendor
+    }
 
     private const val ASSET = "cpu_soc_table.json"
 
@@ -45,15 +50,15 @@ object SocNameResolver {
         return candidates.first()
     }
 
-    /** 商用名; 未收录返回原码。 */
-    fun displayName(context: Context, code: String?): String? =
-        resolve(context, code)?.name ?: code
+    /** 商用名; 未收录返回原码。useChinese: 天玑/骁龙 等中文名。 */
+    fun displayName(context: Context, code: String?, useChinese: Boolean = false): String? =
+        resolve(context, code)?.displayName(useChinese) ?: code
 
     /** 商用名 + 原始码 (用于详情)。 */
-    fun displayWithCode(context: Context, code: String?): String? {
+    fun displayWithCode(context: Context, code: String?, useChinese: Boolean = false): String? {
         if (code.isNullOrBlank()) return null
         val entry = resolve(context, code)
-        return if (entry != null && entry.code != entry.name) "${entry.name} (${code})" else code
+        return if (entry != null && entry.code != entry.name) "${entry.displayName(useChinese)} (${code})" else code
     }
 
     private fun load(context: Context): List<SocEntry> = runCatching {
@@ -65,7 +70,9 @@ object SocNameResolver {
                 add(
                     SocEntry(
                         vendor = o.optString("vendor"),
+                        vendorZh = o.optString("vendor_zh", o.optString("vendor")),
                         name = o.optString("name"),
+                        nameZh = o.optString("name_zh", o.optString("name")),
                         code = o.optString("code"),
                         gpu = o.optString("gpu"),
                         maxFreqGhz = o.optString("max_freq_ghz").toDoubleOrNull(),

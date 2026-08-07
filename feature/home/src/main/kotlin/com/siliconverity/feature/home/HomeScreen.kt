@@ -207,8 +207,9 @@ private fun HeroTitle(running: Boolean) {
 @Composable
 private fun MetricMatrix(facts: List<HardwareFact>) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val zh = java.util.Locale.getDefault().language.startsWith("zh")
     val cpuSoc = factValue(facts, "soc.model")?.let {
-        com.siliconverity.core.hardware.SocNameResolver.displayName(context, it)
+        com.siliconverity.core.hardware.SocNameResolver.displayName(context, it, zh)
     } ?: "—"
     val cpuCores = factValue(facts, "cpu.cores.configured") ?: "—"
     val memTotalBytes = factValue(facts, "memory.totalMem")?.toLongOrNull()
