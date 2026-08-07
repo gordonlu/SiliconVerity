@@ -58,6 +58,7 @@
     <string name="session_env_battery">电池</string>
     <string name="session_env_power">供电</string>
     <string name="session_hint">请保持设备静置，测试期间避免切换应用</string>
+    <string name="session_paused">来电暂停中，挂断后自动恢复</string>
     <string name="session_stop">停止</string>
 
     <!-- 结果页 -->

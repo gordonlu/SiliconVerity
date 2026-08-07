@@ -17,6 +17,7 @@ sealed interface BenchmarkUiState {
         val sampleCount: Int? = null,
         val completed: List<WorkloadProgress>,
         val environment: LiveEnvironmentSnapshot,
+        val paused: Boolean = false,
     ) : BenchmarkUiState
 
     data class Done(

@@ -93,7 +93,16 @@ fun SessionScreen(
             Text(name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(SvSpacing.Xs))
-            PhaseLine(state.phase, state.sampleIndex, state.sampleCount)
+            if (state.paused) {
+                Text(
+                    stringResource(R.string.session_paused),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            } else {
+                PhaseLine(state.phase, state.sampleIndex, state.sampleCount)
+            }
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)

@@ -1,8 +1,13 @@
 package com.siliconverity.benchmark
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.PowerManager
+import android.telephony.TelephonyManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.siliconverity.core.benchmark.BenchmarkCategory
@@ -77,6 +82,47 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     private var job: Job? = null
     private var sessionStartedAt: String = ""
 
+    @Volatile
+    private var paused = false
+
+    private val phoneReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != TelephonyManager.ACTION_PHONE_STATE_CHANGED) return
+            val extraState = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
+            val incoming = extraState == TelephonyManager.EXTRA_STATE_RINGING ||
+                extraState == TelephonyManager.EXTRA_STATE_OFFHOOK
+            setPaused(incoming)
+        }
+    }
+
+    init {
+        runCatching {
+            appContext.registerReceiver(
+                phoneReceiver,
+                IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED),
+            )
+        }
+    }
+
+    override fun onCleared() {
+        runCatching { appContext.unregisterReceiver(phoneReceiver) }
+        super.onCleared()
+    }
+
+    private fun setPaused(value: Boolean) {
+        if (paused == value) return
+        paused = value
+        val current = _state.value
+        if (current is BenchmarkUiState.Running) {
+            _state.value = current.copy(paused = value)
+        }
+    }
+
+    /** 来电/通话期间挂起, 挂断自动恢复。 */
+    private suspend fun awaitResume() {
+        while (paused) delay(300)
+    }
+
     fun run() {
         if (!BenchmarkRunCoordinator.tryAcquire()) {
             _state.value = BenchmarkUiState.Done(emptyList(), "另一个 benchmark 正在运行")
@@ -95,6 +141,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                 val snapshot = captureEnvironment()
 
                 for ((index, item) in suite.withIndex()) {
+                    awaitResume()
                     val progressState = { phase: BenchmarkPhase, sampleIndex: Int?, sampleCount: Int? ->
                         _state.value = BenchmarkUiState.Running(
                             sessionId = sessionId,
@@ -107,6 +154,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                             sampleCount = sampleCount,
                             completed = completed.toList(),
                             environment = snapshot,
+                            paused = paused,
                         )
                     }
                     if (item.isLatency) {
