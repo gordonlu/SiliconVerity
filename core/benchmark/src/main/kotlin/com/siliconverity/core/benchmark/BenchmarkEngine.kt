@@ -27,6 +27,7 @@ class BenchmarkEngine(
         protocol: BenchmarkProtocol = DefaultBenchmarkProtocol,
         onPhase: PhaseListener? = null,
     ): RunManifest {
+        val stableCvThreshold = workload.stableCvThresholdOverride ?: protocol.stableCvThreshold
         val spec = workload.spec
         onPhase?.onPhase(BenchmarkPhase.CALIBRATING, null, null)
         workload.calibrate(protocol.targetRoundMillis.toLong())
@@ -70,7 +71,7 @@ class BenchmarkEngine(
                 onPhase?.onPhase(BenchmarkPhase.MEASURING, measurementSamples.size, target)
             }
             val mcv = Statistics.cv(measurementSamples.map { it.throughput })
-            if (!mcv.isNaN() && mcv <= protocol.stableCvThreshold) break
+            if (!mcv.isNaN() && mcv <= stableCvThreshold) break
         }
 
         onPhase?.onPhase(BenchmarkPhase.VERIFYING, null, null)
@@ -82,7 +83,7 @@ class BenchmarkEngine(
         val validity = when {
             !correctnessOk -> ValidityLevel.INVALID
             cv.isNaN() -> ValidityLevel.INVALID
-            cv <= protocol.stableCvThreshold -> ValidityLevel.STABLE
+            cv <= stableCvThreshold -> ValidityLevel.STABLE
             cv <= protocol.variableCvThreshold -> ValidityLevel.VARIABLE
             else -> ValidityLevel.RETEST_RECOMMENDED
         }

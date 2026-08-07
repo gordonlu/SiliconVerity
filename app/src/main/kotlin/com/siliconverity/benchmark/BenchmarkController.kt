@@ -144,12 +144,33 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                             progressState(phase, sIdx, sCnt)
                         })
                     }
-                    val manifest = outcome.getOrNull()?.copy(sessionId = sessionId)
+                    var manifest = outcome.getOrNull()?.copy(sessionId = sessionId)
                     if (manifest == null) {
                         error = outcome.exceptionOrNull()?.message
                         completed += WorkloadProgress(item.workloadId, categoryOf(item.workloadId), false)
                         progressState(BenchmarkPhase.FINALIZING, null, null)
                         break
+                    }
+                    // 外部干扰 (来电/推送/后台任务) 会导致高 CV -> RETEST。
+                    // 自动重测最多 2 次取最优, 干扰过去后恢复 STABLE; 仍高才保留 RETEST。
+                    if (manifest != null && manifest.validityLevel == ValidityLevel.RETEST_RECOMMENDED) {
+                        var current: com.siliconverity.core.benchmark.RunManifest = manifest
+                        for (attempt in 1..2) {
+                            progressState(BenchmarkPhase.FINALIZING, null, null)
+                            val retry = runCatching {
+                                engine.execute(workload, onPhase = { phase, sIdx, sCnt ->
+                                    progressState(phase, sIdx, sCnt)
+                                })
+                            }.getOrNull()?.copy(sessionId = sessionId)
+                            if (retry == null) break
+                            if (retry.cv < current.cv) {
+                                current = retry.copy(
+                                    warnings = retry.warnings + "auto-retry #$attempt (高波动, 可能外部干扰)",
+                                )
+                            }
+                            if (current.validityLevel != ValidityLevel.RETEST_RECOMMENDED) break
+                        }
+                        manifest = current
                     }
                     val saved = runCatching { store.save(manifest.toBenchmarkRun()).name }.getOrNull()
                     results += RunResult(manifest, saved)

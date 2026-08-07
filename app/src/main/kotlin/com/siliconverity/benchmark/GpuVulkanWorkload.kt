@@ -16,7 +16,11 @@ class GpuVulkanWorkload(
     private val bench: VulkanBench,
     private val variant: GpuWorkload,
     workloadId: String,
+    private val stableCvOverride: Double? = null,
 ) : Workload {
+
+    /** GPU 时钟/总线波动: buffer 带宽测试放宽到 5% (独立/依赖变体保持 3%)。 */
+    override val stableCvThresholdOverride: Double? = stableCvOverride
 
     override val spec = BenchmarkSpec(
         workloadId = workloadId,

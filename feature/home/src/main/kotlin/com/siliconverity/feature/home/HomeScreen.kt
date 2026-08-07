@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -179,8 +180,12 @@ private fun BrandRow(deviceId: String, onOpenHardware: () -> Unit) {
             border = BorderStroke(SvSpacing.StructureLine, MaterialTheme.colorScheme.outline),
             onClick = onOpenHardware,
         ) {
-            Column(modifier = Modifier.padding(horizontal = SvSpacing.Sm, vertical = SvSpacing.Xs)) {
+            Row(
+                modifier = Modifier.padding(horizontal = SvSpacing.Sm, vertical = SvSpacing.Xs),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(stringResource(R.string.home_device_id), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.width(SvSpacing.Xs))
                 Text(deviceId, style = MaterialTheme.typography.labelLarge, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
             }
         }
@@ -192,14 +197,22 @@ private fun HeroTitle(running: Boolean) {
     val status = if (running) stringResource(R.string.home_status_measuring) else stringResource(R.string.home_status_ready)
     val statusColor = if (running) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
     Column {
-        Text(stringResource(R.string.home_hero_silicon), fontSize = 58.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 52.sp)
-        Text(stringResource(R.string.home_hero_verity), fontSize = 58.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 52.sp)
+        Text(stringResource(R.string.home_hero_silicon), fontSize = 50.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 44.sp)
+        Text(stringResource(R.string.home_hero_verity), fontSize = 50.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 44.sp)
         Spacer(Modifier.height(SvSpacing.Xs))
         Text(stringResource(R.string.home_hero_tagline), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.height(SvSpacing.Sm))
-        Text(status, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = statusColor)
-        if (!running) {
-            Text(stringResource(R.string.home_for_benchmark), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(SvSpacing.Xs))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(status, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = statusColor)
+            if (!running) {
+                Spacer(Modifier.width(SvSpacing.Sm))
+                Text(
+                    stringResource(R.string.home_for_benchmark),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+            }
         }
     }
 }

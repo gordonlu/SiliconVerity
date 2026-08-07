@@ -207,6 +207,9 @@ class StorageRandomWriteFsyncWorkload(
         knownInterferences = listOf("flash GC/WA", "background I/O"),
     )
 
+    // 闪存随机写受 GC/WA 影响天然高抖动, 稳定阈值放宽到 5%
+    override val stableCvThresholdOverride: Double? = 0.05
+
     private val blockSize = 4096
     private val blockCount = (sizeBytes / blockSize).toInt()
     private val writesPerRound = 256

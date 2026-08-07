@@ -61,26 +61,23 @@ fun SessionScreen(
             Text(stringResource(R.string.home_brand), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(stringResource(R.string.session_badge), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
         }
-        Spacer(Modifier.height(SvSpacing.Xs))
 
         // 大进度
-        Text(stringResource(R.string.session_perf_test), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.session_perf_test), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
             Text(
                 "%02d / %d".format(state.index, state.total),
-                style = MaterialTheme.typography.displayMedium,
+                style = MaterialTheme.typography.headlineLarge,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
             )
-            Text("$percent%", style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+            Text("$percent%", style = MaterialTheme.typography.titleLarge, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
         }
         StaticProgressBar(fraction = state.index.toFloat() / state.total)
-        Spacer(Modifier.height(SvSpacing.Xs))
 
         // 分类分段: CPU 5 / MEMORY 3 / GPU 3 / I/O 4
         CategorySegments(state)
 
-        Spacer(Modifier.height(SvSpacing.Xs))
         HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
 
         // 当前项目
@@ -93,13 +90,12 @@ fun SessionScreen(
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
             )
-            Text(name, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(SvSpacing.Sm))
+            Spacer(Modifier.height(SvSpacing.Xs))
             PhaseLine(state.phase, state.sampleIndex, state.sampleCount)
         }
 
-        Spacer(Modifier.height(SvSpacing.Sm))
         HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
 
         // 分类状态
@@ -107,7 +103,6 @@ fun SessionScreen(
             CategoryStatusRow(category, state)
         }
 
-        Spacer(Modifier.height(SvSpacing.Sm))
         HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
 
         // 环境 3 项
@@ -125,7 +120,7 @@ fun SessionScreen(
 
         OutlinedButton(
             onClick = onStop,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = MaterialTheme.shapes.small,
             border = BorderStroke(SvSpacing.StructureLine, MaterialTheme.colorScheme.error),
             colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -243,12 +238,12 @@ private fun CategoryStatusRow(category: BenchmarkCategory, state: BenchmarkUiSta
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(
             stringResource(SvWorkloads.categoryNameRes(category)),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
         )
         Text(
             "$statusLabel  $doneCount / $size",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = statusColor,
             fontFamily = FontFamily.Monospace,
         )
@@ -258,9 +253,9 @@ private fun CategoryStatusRow(category: BenchmarkCategory, state: BenchmarkUiSta
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.EnvCell(label: String, value: String) {
     SvPanel(modifier = Modifier.weight(1f)) {
-        Column(modifier = Modifier.padding(SvSpacing.Sm)) {
+        Column(modifier = Modifier.padding(SvSpacing.Xs)) {
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(value, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold, maxLines = 1)
         }
     }
 }
