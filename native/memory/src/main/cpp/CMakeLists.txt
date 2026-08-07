@@ -4,6 +4,7 @@ project(sv_mem LANGUAGES CXX)
 
 add_library(sv_mem SHARED
     mem_jni.cpp
+    mem_latency_jni.cpp
 )
 
 target_compile_features(sv_mem PRIVATE cxx_std_20)

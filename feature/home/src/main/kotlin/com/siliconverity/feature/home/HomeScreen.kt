@@ -48,6 +48,7 @@ fun HomeScreen(
     onOpenHardware: () -> Unit,
     onOpenSustained: () -> Unit,
     onOpenGpu: () -> Unit,
+    onOpenLatency: () -> Unit,
     onOpenRun: (String) -> Unit,
 ) {
     val deviceId = rememberDeviceId()
@@ -81,7 +82,12 @@ fun HomeScreen(
                     onClick = onOpenGpu,
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
-                ) { Text("GPU COMPUTE", fontWeight = FontWeight.SemiBold) }
+                ) { Text("GPU", fontWeight = FontWeight.SemiBold) }
+                OutlinedButton(
+                    onClick = onOpenLatency,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.small,
+                ) { Text("LATENCY", fontWeight = FontWeight.SemiBold) }
             }
         }
     }

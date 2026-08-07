@@ -51,6 +51,8 @@ import com.siliconverity.feature.sustained.SustainedScreen
 import com.siliconverity.benchmark.SustainedController
 import com.siliconverity.feature.gpu.GpuScreen
 import com.siliconverity.benchmark.GpuController
+import com.siliconverity.benchmark.LatencyController
+import com.siliconverity.benchmark.LatencyScreen
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -95,6 +97,7 @@ private fun AppShell() {
                     onOpenHardware = { nav.navigate("hardware") },
                     onOpenSustained = { nav.navigate("sustained") },
                     onOpenGpu = { nav.navigate("gpu") },
+                    onOpenLatency = { nav.navigate("latency") },
                     onOpenRun = { runId -> nav.navigate("run/$runId") },
                 )
             }
@@ -123,6 +126,15 @@ private fun AppShell() {
                     state = gpuState,
                     onRun = { gpuVm.run() },
                     onStop = { gpuVm.stop() },
+                    onBack = { nav.popBackStack() },
+                )
+            }
+            composable("latency") {
+                val latencyVm: LatencyController = viewModel()
+                val latencyState by latencyVm.state.collectAsStateWithLifecycle()
+                LatencyScreen(
+                    state = latencyState,
+                    onRun = { latencyVm.run() },
                     onBack = { nav.popBackStack() },
                 )
             }
