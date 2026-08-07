@@ -45,17 +45,18 @@ import com.siliconverity.core.model.HardwareFact
 
 /**
  * 基准测试结果页 — 第一屏: 综合分 (最大) + 四分类分 (×10 尺度) + 设备信息。
- * 后续屏 (Profile/Latency/Quality/Technical) 后续迭代。
+ * 通用参数: 既可用于跑完自动进入, 也可从历史/最近会话回看。
  */
 @Composable
 fun ResultScreen(
-    done: BenchmarkUiState.Done,
+    score: ScoreReport?,
+    sessionStartedAt: String?,
+    error: String?,
     hardwareFacts: List<HardwareFact>,
     onRunAgain: () -> Unit,
     onHistory: () -> Unit,
     onShare: () -> Unit,
 ) {
-    val score = done.score
     LazyColumn(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
         contentPadding = PaddingValues(
@@ -102,7 +103,7 @@ fun ResultScreen(
                 } ?: ""
                 val ram = factValue(hardwareFacts, "memory.totalMem")?.toLongOrNull()?.let { "%.0f GB".format(it / 1_000_000_000.0) } ?: ""
                 val android = factValue(hardwareFacts, "device.android_version") ?: ""
-                val date = done.sessionStartedAt?.let {
+                val date = sessionStartedAt?.let {
                     SvTime.formatIso(it, stringResource(SvR.string.sv_today), stringResource(SvR.string.sv_yesterday))
                 } ?: ""
                 Text(
@@ -128,9 +129,7 @@ fun ResultScreen(
             }
         } else {
             item {
-                val reason = done.score?.exclusions?.firstOrNull()?.reason
-                    ?: done.error
-                    ?: stringResource(R.string.home_score_not_generated)
+                val reason = error ?: stringResource(R.string.home_score_not_generated)
                 Text(
                     reason,
                     style = MaterialTheme.typography.bodyMedium,

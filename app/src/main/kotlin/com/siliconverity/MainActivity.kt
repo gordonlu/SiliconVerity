@@ -87,8 +87,10 @@ private fun AppShell() {
     val nav = rememberNavController()
     val hardwareVm: HardwareViewModel = viewModel()
     val benchmarkVm: BenchmarkController = viewModel()
+    val historyVm: HistoryViewModel = viewModel()
     val hardwareState by hardwareVm.state.collectAsStateWithLifecycle()
     val benchmarkState by benchmarkVm.state.collectAsStateWithLifecycle()
+    val historyState by historyVm.state.collectAsStateWithLifecycle()
 
     // 切到后台暂停测试, 返回自动恢复 (避免全核跑分拖垮系统)
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -109,6 +111,7 @@ private fun AppShell() {
     val doneState = benchmarkState as? BenchmarkUiState.Done
     if (doneState != null && lastDone != doneState) {
         lastDone = doneState
+        historyVm.load()
         if (doneState.results.isNotEmpty() || doneState.error != null) {
             LaunchedEffect(doneState) {
                 nav.navigate("benchmark-result") {
@@ -132,6 +135,7 @@ private fun AppShell() {
             composable("home") {
                 val lastRun = (benchmarkState as? BenchmarkUiState.Done)
                     ?.results?.lastOrNull()?.manifest
+                val lastSession = historyState.sessions.firstOrNull()
                 HomeScreen(
                     hardwareFacts = hardwareState.facts,
                     lastRun = lastRun,
@@ -143,6 +147,56 @@ private fun AppShell() {
                     onOpenGpu = { nav.navigate("gpu") },
                     onOpenLatency = { nav.navigate("latency") },
                     onOpenRun = { runId -> nav.navigate("run/$runId") },
+                    onOpenResult = { nav.navigate("result-last") },
+                    lastSessionScore = lastSession?.score,
+                    lastSessionStartedAt = lastSession?.startedAt,
+                )
+            }
+            composable("result-last") {
+                val context = LocalContext.current
+                val session = historyState.sessions.firstOrNull()
+                if (session == null) {
+                    LaunchedEffect(Unit) { nav.popBackStack() }
+                    return@composable
+                }
+                ResultScreen(
+                    score = session.score,
+                    sessionStartedAt = session.startedAt,
+                    error = null,
+                    hardwareFacts = hardwareState.facts,
+                    onRunAgain = {
+                        nav.popBackStack()
+                        benchmarkVm.run()
+                    },
+                    onHistory = {
+                        nav.navigate("history") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                    onShare = {
+                        val score = session.score
+                        val text = if (score != null) {
+                            context?.getString(
+                                com.siliconverity.feature.home.R.string.result_share_text,
+                                score.overallScore ?: 0,
+                                (score.cpuScore ?: 0) * 10,
+                                (score.gpuScore ?: 0) * 10,
+                                (score.memoryScore ?: 0) * 10,
+                                (score.appIoScore ?: 0) * 10,
+                                score.scoreVersion,
+                            )
+                        } else {
+                            "SiliconVerity"
+                        }
+                        runCatching {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, text)
+                            }
+                            context?.startActivity(android.content.Intent.createChooser(intent, null))
+                        }
+                    },
                 )
             }
             composable("benchmark-result") {
@@ -155,7 +209,9 @@ private fun AppShell() {
                 }
                 val context = LocalContext.current
                 ResultScreen(
-                    done = done,
+                    score = done.score,
+                    sessionStartedAt = done.sessionStartedAt,
+                    error = done.error,
                     hardwareFacts = hardwareState.facts,
                     onRunAgain = {
                         benchmarkVm.run()
@@ -229,14 +285,58 @@ private fun AppShell() {
                 )
             }
             composable("history") {
-                val historyVm: HistoryViewModel = viewModel()
-                val historyState by historyVm.state.collectAsStateWithLifecycle()
                 HistoryScreen(
                     historyState,
                     onOpenRun = { runId -> nav.navigate("brun/$runId") },
                     onClear = { historyVm.clear() },
                     onCompare = { nav.navigate("compare") },
                     onRefresh = { historyVm.load() },
+                    onOpenSession = { sessionId ->
+                        nav.navigate("result-session/$sessionId")
+                    },
+                )
+            }
+            composable("result-session/{sessionId}") { entry ->
+                val sessionId = entry.arguments?.getString("sessionId") ?: ""
+                val context = LocalContext.current
+                val session = historyState.sessions.firstOrNull { it.id == sessionId }
+                if (session == null) {
+                    LaunchedEffect(Unit) { nav.popBackStack() }
+                    return@composable
+                }
+                ResultScreen(
+                    score = session.score,
+                    sessionStartedAt = session.startedAt,
+                    error = null,
+                    hardwareFacts = hardwareState.facts,
+                    onRunAgain = {
+                        nav.popBackStack()
+                        benchmarkVm.run()
+                    },
+                    onHistory = { nav.popBackStack() },
+                    onShare = {
+                        val score = session.score
+                        val text = if (score != null) {
+                            context.getString(
+                                com.siliconverity.feature.home.R.string.result_share_text,
+                                score.overallScore ?: 0,
+                                (score.cpuScore ?: 0) * 10,
+                                (score.gpuScore ?: 0) * 10,
+                                (score.memoryScore ?: 0) * 10,
+                                (score.appIoScore ?: 0) * 10,
+                                score.scoreVersion,
+                            )
+                        } else {
+                            "SiliconVerity"
+                        }
+                        runCatching {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_TEXT, text)
+                            }
+                            context.startActivity(android.content.Intent.createChooser(intent, null))
+                        }
+                    },
                 )
             }
             composable(

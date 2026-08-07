@@ -57,6 +57,9 @@ fun HomeScreen(
     onOpenGpu: () -> Unit,
     onOpenLatency: () -> Unit,
     onOpenRun: (String) -> Unit,
+    onOpenResult: () -> Unit = {},
+    lastSessionScore: com.siliconverity.core.benchmark.ScoreReport? = null,
+    lastSessionStartedAt: String? = null,
 ) {
     when (val state = benchmarkState) {
         is BenchmarkUiState.Running -> {
@@ -89,9 +92,15 @@ fun HomeScreen(
         }
         item { MetricMatrix(hardwareFacts) }
         val done = benchmarkState as? BenchmarkUiState.Done
-        val score = done?.score
+        val score = done?.score ?: lastSessionScore
         if (score != null) {
-            item { LastScoreCard(score, done) }
+            item {
+                LastScoreCard(
+                    score = score,
+                    sessionStartedAt = done?.sessionStartedAt ?: lastSessionStartedAt,
+                    onOpenResult = onOpenResult,
+                )
+            }
         } else {
             item { LastRun(lastRun, onOpenRun) }
         }
@@ -137,9 +146,16 @@ private fun CalculatingScreen() {
 @Composable
 private fun LastScoreCard(
     score: com.siliconverity.core.benchmark.ScoreReport,
-    done: BenchmarkUiState.Done,
+    sessionStartedAt: String?,
+    onOpenResult: () -> Unit,
 ) {
-    SvPanel(modifier = Modifier.fillMaxWidth()) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surface,
+        onClick = onOpenResult,
+        border = BorderStroke(SvSpacing.StructureLine, MaterialTheme.colorScheme.outline),
+    ) {
         Column(modifier = Modifier.padding(SvSpacing.Md)) {
             Text(stringResource(R.string.home_last_score), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(SvSpacing.Xs))
@@ -155,7 +171,7 @@ private fun LastScoreCard(
             if (catLine.isNotEmpty()) {
                 Text(catLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            val date = done.sessionStartedAt?.let {
+            val date = sessionStartedAt?.let {
                 SvTime.formatIso(it, stringResource(SvR.string.sv_today), stringResource(SvR.string.sv_yesterday))
             } ?: ""
             Text(

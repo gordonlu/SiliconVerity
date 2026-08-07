@@ -1,0 +1,94 @@
+{
+  "scoreVersion": "SVS-1.0",
+  "referencePackVersion": "SV-REF-2026-08-A",
+  "overallWeights": {
+    "CPU": 0.3,
+    "GPU": 0.35,
+    "Memory": 0.2,
+    "AppIO": 0.15
+  },
+  "categories": {
+    "CPU": {
+      "weight": 0.3,
+      "workloads": {
+        "cpu.int.ilp": {
+          "weight": 0.2
+        },
+        "cpu.fp32.fma": {
+          "weight": 0.2
+        },
+        "cpu.int.branch": {
+          "weight": 0.15
+        },
+        "cpu.hash.cached": {
+          "weight": 0.1
+        },
+        "cpu.multithread": {
+          "weight": 0.35
+        }
+      }
+    },
+    "GPU": {
+      "weight": 0.35,
+      "workloads": {
+        "vulkan.fp32.independent": {
+          "weight": 0.45
+        },
+        "vulkan.fp32.dependency": {
+          "weight": 0.3
+        },
+        "vulkan.buffer.throughput": {
+          "weight": 0.25
+        }
+      }
+    },
+    "Memory": {
+      "weight": 0.2,
+      "workloads": {
+        "mem.bandwidth.read": {
+          "weight": 0.55
+        },
+        "mem.bandwidth.copy": {
+          "weight": 0.45
+        }
+      }
+    },
+    "AppIO": {
+      "weight": 0.15,
+      "workloads": {
+        "storage.seq_write.buffered": {
+          "weight": 0.15
+        },
+        "storage.seq_write.durable": {
+          "weight": 0.4
+        },
+        "storage.random_write.fsync": {
+          "weight": 0.25
+        },
+        "storage.seq_read.warm": {
+          "weight": 0.2
+        }
+      }
+    }
+  },
+  "references": {
+    "cpu.int.ilp": 2730676039.43,
+    "cpu.fp32.fma": 10951340249.91,
+    "cpu.int.branch": 472594735.5,
+    "cpu.hash.cached": 912662375.8,
+    "cpu.multithread": 2162065236.08,
+    "vulkan.fp32.independent": 1439062079500.0,
+    "vulkan.fp32.dependency": 733605788000.0,
+    "vulkan.buffer.throughput": 46121784000.0,
+    "mem.bandwidth.read": 26171180532.22,
+    "mem.bandwidth.copy": 20857520610.95,
+    "storage.seq_write.buffered": 1188248179.25,
+    "storage.seq_write.durable": 585025076.29,
+    "storage.random_write.fsync": 55654647.73,
+    "storage.seq_read.warm": 6326675589.86
+  },
+  "clampMin": 0.2,
+  "clampMax": 5.0,
+  "multiplier": 10.0,
+  "itemBase": 1000.0
+}
