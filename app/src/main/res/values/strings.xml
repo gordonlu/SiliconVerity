@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">芯鉴</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_history">历史</string>
+    <string name="nav_settings">设置</string>
+    <string name="latency_title">内存延迟</string>
+    <string name="latency_back">返回</string>
+    <string name="latency_desc">Pointer chase (64B stride, 随机置换破预取)。ns/access 随工作集增大反映 L1/LLC/RAM 延迟。</string>
+    <string name="latency_measuring">MEASURING...</string>
+    <string name="latency_run">RUN LATENCY</string>
+    <string name="latency_not_run">尚未运行</string>
+    <string name="latency_running">逐 size pointer chase…</string>
+    <string name="latency_error">出错: %1$s</string>
+    <string name="latency_ns">%1$.1f ns</string>
 </resources>

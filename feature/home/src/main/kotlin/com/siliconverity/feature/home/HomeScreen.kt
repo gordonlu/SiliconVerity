@@ -26,6 +26,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +40,8 @@ import com.siliconverity.core.designsystem.SvColors
 import com.siliconverity.core.designsystem.SvPanel
 import com.siliconverity.core.designsystem.SvSpacing
 import com.siliconverity.core.designsystem.SvThermalStatus
+import com.siliconverity.core.designsystem.SvTime
+import com.siliconverity.core.designsystem.R as SvR
 import com.siliconverity.core.model.HardwareFact
 
 @Composable
@@ -83,17 +86,17 @@ fun HomeScreen(
                     onClick = onOpenSustained,
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
-                ) { Text("SUSTAINED", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                ) { Text(stringResource(R.string.home_sustained), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 OutlinedButton(
                     onClick = onOpenGpu,
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
-                ) { Text("GPU", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                ) { Text(stringResource(R.string.home_gpu), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 OutlinedButton(
                     onClick = onOpenLatency,
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
-                ) { Text("LATENCY", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                ) { Text(stringResource(R.string.home_latency), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
     }
@@ -103,7 +106,7 @@ fun HomeScreen(
 private fun BrandRow(deviceId: String, onOpenHardware: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
         Column {
-            Text("芯鉴", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.home_brand), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text("SiliconVerity", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Surface(
@@ -113,7 +116,7 @@ private fun BrandRow(deviceId: String, onOpenHardware: () -> Unit) {
             onClick = onOpenHardware,
         ) {
             Column(modifier = Modifier.padding(horizontal = SvSpacing.Sm, vertical = SvSpacing.Xs)) {
-                Text("DEVICE ID", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.home_device_id), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(deviceId, style = MaterialTheme.typography.labelLarge, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
             }
         }
@@ -122,17 +125,17 @@ private fun BrandRow(deviceId: String, onOpenHardware: () -> Unit) {
 
 @Composable
 private fun HeroTitle(running: Boolean) {
-    val status = if (running) "MEASURING" else "READY"
+    val status = if (running) stringResource(R.string.home_status_measuring) else stringResource(R.string.home_status_ready)
     val statusColor = if (running) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
     Column {
-        Text("SILICON", fontSize = 58.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 52.sp)
-        Text("VERITY", fontSize = 58.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 52.sp)
+        Text(stringResource(R.string.home_hero_silicon), fontSize = 58.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 52.sp)
+        Text(stringResource(R.string.home_hero_verity), fontSize = 58.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 52.sp)
         Spacer(Modifier.height(SvSpacing.Xs))
-        Text("VERIFY HARDWARE. TRUST PERFORMANCE.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.home_hero_tagline), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(SvSpacing.Sm))
         Text(status, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = statusColor)
         if (!running) {
-            Text("FOR BENCHMARK", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.home_for_benchmark), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -156,21 +159,21 @@ private fun MetricMatrix(facts: List<HardwareFact>) {
     SvPanel(modifier = Modifier.fillMaxWidth()) {
         Column {
             Row(modifier = Modifier.fillMaxWidth()) {
-                MetricCell(modifier = Modifier.weight(1f), label = "CPU", value = cpuSoc, unit = "SOC", sub = "$cpuCores CORES")
+                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_cpu), value = cpuSoc, unit = stringResource(R.string.home_unit_soc), sub = "$cpuCores ${stringResource(R.string.home_unit_cores)}")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
-                MetricCell(modifier = Modifier.weight(1f), label = "MEMORY", value = memFree, unit = "FREE", sub = "$memTotal TOTAL")
+                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_memory), value = memFree, unit = stringResource(R.string.home_unit_free), sub = "$memTotal ${stringResource(R.string.home_unit_total)}")
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
             Row(modifier = Modifier.fillMaxWidth()) {
-                MetricCell(modifier = Modifier.weight(1f), label = "STORAGE", value = storageTotal, unit = "TOTAL", sub = "$storageAvail FREE")
+                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_storage), value = storageTotal, unit = stringResource(R.string.home_unit_total), sub = "$storageAvail ${stringResource(R.string.home_unit_free)}")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
-                MetricCell(modifier = Modifier.weight(1f), label = "THERMAL", value = thermal, unit = "STATUS")
+                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_thermal), value = thermal, unit = stringResource(R.string.home_unit_status))
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
             Row(modifier = Modifier.fillMaxWidth()) {
-                MetricCell(modifier = Modifier.weight(1f), label = "BATTERY", value = batteryTemp, unit = "TEMP", sub = "$batteryLevel CHG")
+                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_battery), value = batteryTemp, unit = stringResource(R.string.home_unit_temp), sub = "$batteryLevel ${stringResource(R.string.home_unit_chg)}")
                 VerticalDivider(color = MaterialTheme.colorScheme.outline, thickness = SvSpacing.StructureLine)
-                MetricCell(modifier = Modifier.weight(1f), label = "SYSTEM", value = android, unit = "ANDROID")
+                MetricCell(modifier = Modifier.weight(1f), label = stringResource(R.string.home_metric_system), value = android, unit = stringResource(R.string.home_unit_android))
             }
         }
     }
@@ -199,9 +202,9 @@ private fun LastRun(lastRun: RunManifest?, onOpenRun: (String) -> Unit) {
     SvPanel(modifier = Modifier.fillMaxWidth()) {
         if (lastRun == null) {
             Column(modifier = Modifier.padding(SvSpacing.Md)) {
-                Text("LAST RUN", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("NO OFFICIAL SCORE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text("Alpha 阶段不提供正式总分", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.home_last_run), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.home_no_official_score), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.home_alpha_no_score), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             Surface(
@@ -211,7 +214,7 @@ private fun LastRun(lastRun: RunManifest?, onOpenRun: (String) -> Unit) {
                 onClick = { onOpenRun(lastRun.runId) },
             ) {
                 Column(modifier = Modifier.padding(SvSpacing.Md)) {
-                    Text("LAST RUN", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.home_last_run), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "%.2f %s".format(
@@ -225,7 +228,7 @@ private fun LastRun(lastRun: RunManifest?, onOpenRun: (String) -> Unit) {
                         ValidityChip(lastRun.validityLevel)
                     }
                     Text(
-                        "${lastRun.workloadId}  •  ${lastRun.startedAt}",
+                        stringResource(R.string.home_last_run_line, lastRun.workloadId, SvTime.formatIso(lastRun.startedAt, stringResource(SvR.string.sv_today), stringResource(SvR.string.sv_yesterday))),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -243,7 +246,15 @@ private fun ValidityChip(level: ValidityLevel) {
         ValidityLevel.RETEST_RECOMMENDED -> MaterialTheme.colorScheme.error
         ValidityLevel.INVALID -> MaterialTheme.colorScheme.error
     }
-    Text(level.name, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.SemiBold)
+    Text(validityLabel(level), style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.SemiBold)
+}
+
+@Composable
+private fun validityLabel(level: ValidityLevel): String = when (level) {
+    ValidityLevel.STABLE -> stringResource(SvR.string.sv_validity_stable)
+    ValidityLevel.VARIABLE -> stringResource(SvR.string.sv_validity_variable)
+    ValidityLevel.RETEST_RECOMMENDED -> stringResource(SvR.string.sv_validity_retest)
+    ValidityLevel.INVALID -> stringResource(SvR.string.sv_validity_invalid)
 }
 
 @Composable
@@ -259,7 +270,7 @@ private fun PrimaryCta(running: Boolean, onClick: () -> Unit) {
         ),
     ) {
         Text(
-            if (running) "MEASURING..." else "START BENCHMARK",
+            if (running) stringResource(R.string.home_measuring_btn) else stringResource(R.string.home_start_benchmark),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
@@ -270,31 +281,37 @@ private fun PrimaryCta(running: Boolean, onClick: () -> Unit) {
 private fun ScoreCard(score: com.siliconverity.core.benchmark.ScoreReport) {
     SvPanel(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(SvSpacing.Md)) {
-            Text("SV PERFORMANCE", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.home_sv_performance), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(SvSpacing.Xs))
             score.overallScore?.let {
                 Text("%,d".format(it), style = MaterialTheme.typography.displayMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-            } ?: Text("综合分未生成（有 RETEST/INVALID 或分类缺失）", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            } ?: Text(stringResource(R.string.home_score_not_generated), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             Text(
-                "评分 ${score.scoreVersion}  •  参考 ${score.referencePackVersion}  •  可信度 ${score.confidence.level}  •  覆盖 %.0f%%".format(score.coveragePercent),
+                stringResource(
+                    R.string.home_score_meta,
+                    score.scoreVersion,
+                    score.referencePackVersion,
+                    score.confidence.level,
+                    score.coveragePercent,
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(SvSpacing.Sm))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("CPU", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.home_metric_cpu), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(score.cpuScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("GPU", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.home_gpu), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(score.gpuScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("内存", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.home_cat_memory), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(score.memoryScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("应用 I/O", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.home_cat_io), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(score.appIoScore?.let { "%,d".format(it) } ?: "—", style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
             }
         }

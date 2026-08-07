@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,17 +50,17 @@ fun HardwareScreen(
     onBack: () -> Unit,
 ) {
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("HARDWARE", style = MaterialTheme.typography.labelLarge) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    TextButton(onClick = onRefresh) { Text("刷新") }
-                },
+            topBar = {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.hw_title), style = MaterialTheme.typography.labelLarge) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.hw_back))
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = onRefresh) { Text(stringResource(R.string.hw_refresh)) }
+                    },
             )
         },
     ) { padding ->
@@ -72,7 +73,7 @@ fun HardwareScreen(
                 item { androidx.compose.material3.CircularProgressIndicator() }
             }
             hardwareState.error?.let {
-                item { Text("采集出错: $it", color = MaterialTheme.colorScheme.error) }
+                item { Text(stringResource(R.string.hw_error, it), color = MaterialTheme.colorScheme.error) }
             }
             items(hardwareState.facts, key = { it.key }) { fact ->
                 FactCard(fact)
@@ -128,22 +129,22 @@ private fun FactCard(fact: HardwareFact) {
             }
             if (expanded) {
                 Spacer(Modifier.height(SvSpacing.Sm))
-                Text("来源 ID: ${fact.sourceId}", style = MaterialTheme.typography.bodySmall)
-                Text("原始值: ${fact.rawValue}", style = MaterialTheme.typography.bodySmall)
-                Text("采集时间: ${fact.collectedAt}", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.hw_source_id, fact.sourceId ?: ""), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.hw_raw_value, fact.rawValue ?: ""), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.hw_collected_at, fact.collectedAt), style = MaterialTheme.typography.bodySmall)
                 fact.capabilityStatus?.let {
-                    Text("能力状态: $it", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.hw_capability, it.toString()), style = MaterialTheme.typography.bodySmall)
                 }
                 if (fact.warnings.isNotEmpty()) {
                     Text(
-                        "警告: ${fact.warnings.joinToString()}",
+                        stringResource(R.string.hw_warnings, fact.warnings.joinToString()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
                 if (fact.conflictingEvidence.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
-                    Text("冲突证据:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.hw_conflicts), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
                     fact.conflictingEvidence.forEach { ev ->
                         Text(
                             "  - [${ev.sourceType}] ${ev.sourceId} = ${ev.rawValue}",
@@ -172,15 +173,16 @@ private fun ConfidenceChip(confidence: Confidence) {
 }
 
 /** 把存储/调试用原始值映射为 UI 友好文案 (布尔、字节数、温度、百分比等)。 */
+@Composable
 private fun friendlyDisplay(fact: HardwareFact): String {
-    val v = fact.displayValue ?: return "未知"
+    val v = fact.displayValue ?: return stringResource(R.string.hw_unknown)
     return when (fact.key) {
         "thermal.status" -> SvThermalStatus.short(v)
         "memory.totalMem", "memory.availMem", "memory.threshold",
         "storage.fs.total", "storage.fs.available", "storage.fs.free", "storage.fs.block_size" ->
             SvFormat.bytes(v) ?: v
-        "memory.lowMemory" -> if (v == "true") "内存不足" else "正常"
-        "battery.charging" -> if (v == "true") "充电中" else "未充电"
+        "memory.lowMemory" -> if (v == "true") stringResource(R.string.hw_low_memory) else stringResource(R.string.hw_memory_ok)
+        "battery.charging" -> if (v == "true") stringResource(R.string.hw_charging) else stringResource(R.string.hw_not_charging)
         "battery.level" -> v.toIntOrNull()?.let { "$it%" } ?: v
         "battery.temperature" -> v.toDoubleOrNull()?.let { "%.1f°C".format(it) } ?: v
         else -> v

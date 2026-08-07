@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_title">HISTORY</string>
+    <string name="history_compare">COMPARE</string>
+    <string name="history_clear">CLEAR</string>
+    <string name="history_empty">No runs yet.</string>
+    <string name="history_items">%1$d items</string>
+    <string name="history_cv">CV %1$.4f</string>
+
+    <string name="history_back">BACK</string>
+    <string name="history_run_manifest_title">RUN MANIFEST</string>
+    <string name="history_version_time">v%1$s  •  %2$s</string>
+
+    <string name="history_sec_identity">IDENTITY</string>
+    <string name="history_sec_environment">ENVIRONMENT</string>
+    <string name="history_sec_validity">VALIDITY</string>
+    <string name="history_sec_protocol">PROTOCOL</string>
+    <string name="history_sec_payload">PAYLOAD</string>
+    <string name="history_sec_warnings">WARNINGS</string>
+    <string name="history_kv_run_id">runId</string>
+    <string name="history_kv_session_id">sessionId</string>
+    <string name="history_kv_protocol">protocol</string>
+    <string name="history_kv_spirv">spirv</string>
+    <string name="history_kv_arith">arith</string>
+    <string name="history_kv_device">device</string>
+    <string name="history_kv_soc">SoC</string>
+    <string name="history_kv_android">Android</string>
+    <string name="history_kv_abi">ABI</string>
+    <string name="history_kv_battery">battery</string>
+    <string name="history_kv_thermal">thermal</string>
+    <string name="history_kv_level">level</string>
+    <string name="history_kv_robust_cv">robustCv</string>
+    <string name="history_kv_score_eligible">scoreEligible</string>
+    <string name="history_kv_correctness">correctness</string>
+    <string name="history_kv_samples">samples</string>
+    <string name="history_kv_thresholds">thresholds</string>
+    <string name="history_kv_mad">mad</string>
+    <string name="history_kv_min_max">min / max</string>
+    <string name="history_kv_trend_slope">trendSlope</string>
+    <string name="history_kv_relative_trend">relativeTrend</string>
+    <string name="history_kv_outliers">outliers</string>
+    <string name="history_samples_count">samples (%1$d)</string>
+    <string name="history_sample_line">#%1$d  %2$d units  %3$d ns</string>
+    <string name="history_retention_value">retention %1$.1f%%</string>
+    <string name="history_kv_initial_stable">initial / stable</string>
+    <string name="history_m_ops_s">%1$.2f / %2$.2f M ops/s</string>
+    <string name="history_kv_t90">t90 / t80</string>
+    <string name="history_t90_line">%1$.0f / %2$.0f s</string>
+    <string name="history_kv_worst">worst window</string>
+    <string name="history_worst_line">%1$.2f M ops/s</string>
+    <string name="history_kv_total_work">total work</string>
+    <string name="history_total_work_line">%1$,d</string>
+    <string name="history_windows">windows: %1$d</string>
+    <string name="history_timeline_sample">t=%1$ds  %2$s</string>
+    <string name="history_points">%1$d points</string>
+    <string name="history_point_line">%1$s  %2$s</string>
+    <string name="history_latency_ns">%1$.1f ns</string>
+
+    <string name="history_run_id">Run ID</string>
+    <string name="history_device">Device</string>
+    <string name="history_soc_reported">SoC (reported)</string>
+    <string name="history_android">Android</string>
+    <string name="history_abi">ABI</string>
+    <string name="history_battery">Battery</string>
+    <string name="history_thermal">Thermal</string>
+    <string name="history_app_version">App version</string>
+    <string name="history_engine_version">Engine version</string>
+    <string name="history_median">median</string>
+    <string name="history_mad">MAD</string>
+    <string name="history_cv_label">CV</string>
+    <string name="history_correctness">Correctness</string>
+    <string name="history_passed">Passed</string>
+    <string name="history_failed">Failed</string>
+    <string name="history_validity">Validity</string>
+    <string name="history_meas_samples">Measurement samples</string>
+    <string name="history_warmup_samples">Warmup samples</string>
+    <string name="history_warnings">Warnings</string>
+    <string name="history_warning_item">• %1$s</string>
+
+    <string name="history_compare_count">COMPARE %1$d/2</string>
+    <string name="history_compare_a">A: %1$s</string>
+    <string name="history_compare_b">B: %1$s</string>
+    <string name="history_compare_mismatch">⚠ different workloads — comparison is informational only</string>
+    <string name="history_median_a">median A</string>
+    <string name="history_median_b">median B</string>
+    <string name="history_delta_median">Δ median %1$.2f%%</string>
+    <string name="history_cv_ab">cv A / B</string>
+    <string name="history_validity_ab">validity A / B</string>
+    <string name="history_correctness_ab">correctness A / B</string>
+    <string name="history_thermal_ab">thermal A / B</string>
+</resources>

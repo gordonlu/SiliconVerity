@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gpu_title">GPU COMPUTE</string>
+    <string name="gpu_back">BACK</string>
+    <string name="gpu_desc">Vulkan Compute MiniBench (no graphics pipeline). Shader throughput and buffer throughput only — not a measure of full graphics performance.</string>
+    <string name="gpu_run_start">RUN GPU COMPUTE</string>
+    <string name="gpu_run_measuring">MEASURING...</string>
+    <string name="gpu_stop">STOP</string>
+    <string name="gpu_not_run">NOT RUN YET</string>
+    <string name="gpu_running_hint">FP32 Independent / Dependency / Buffer: 3 warmups + 7 measurements each…</string>
+    <string name="gpu_error">Error: %1$s</string>
+    <string name="gpu_card_independent">FP32 INDEPENDENT</string>
+    <string name="gpu_card_dependency">FP32 DEPENDENCY</string>
+    <string name="gpu_card_buffer">BUFFER THROUGHPUT</string>
+    <string name="gpu_no_result">NO RESULT</string>
+    <string name="gpu_vulkan_unavailable">Vulkan unavailable</string>
+    <string name="gpu_driver_line">driver %1$s  •  Vulkan %2$s</string>
+    <string name="gpu_arith_line">arith %1$s / %2$s</string>
+    <string name="gpu_metric_value">%1$.2f %2$s</string>
+    <string name="gpu_cv_line">CV %1$.4f  •  GPU exec %2$,d ns</string>
+    <string name="gpu_submit_line">submit diag  rec %1$,d / submit %2$,d / wait %3$,d ns</string>
+    <string name="gpu_checksum_ok">checksum OK</string>
+    <string name="gpu_checksum_fail">checksum FAIL</string>
+    <string name="gpu_spirv">spirv %1$s</string>
+</resources>

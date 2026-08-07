@@ -31,9 +31,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.siliconverity.R
 import com.siliconverity.core.designsystem.SvSpacing
 import com.siliconverity.core.benchmark.LatencyPoint
 import kotlin.math.ln
@@ -48,8 +50,8 @@ fun LatencyScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("MEMORY LATENCY", style = MaterialTheme.typography.labelLarge) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "返回") } },
+                title = { Text(stringResource(R.string.latency_title), style = MaterialTheme.typography.labelLarge) },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.latency_back)) } },
             )
         },
     ) { padding ->
@@ -59,25 +61,25 @@ fun LatencyScreen(
             verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
         ) {
             item {
-                Text("Pointer chase (64B stride, 随机置换破预取)。ns/access 随工作集增大反映 L1/LLC/RAM 延迟。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.latency_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             item {
                 val running = state is LatencyUiState.Running
                 Button(onClick = onRun, enabled = !running, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) {
-                    Text(if (running) "MEASURING..." else "RUN LATENCY", fontWeight = FontWeight.SemiBold)
+                    Text(if (running) stringResource(R.string.latency_measuring) else stringResource(R.string.latency_run), fontWeight = FontWeight.SemiBold)
                 }
             }
             when (state) {
-                is LatencyUiState.Idle -> item { Text("尚未运行", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                is LatencyUiState.Running -> item { Text("逐 size pointer chase…", style = MaterialTheme.typography.bodyMedium) }
-                is LatencyUiState.Error -> item { Text("出错: ${state.message}", color = MaterialTheme.colorScheme.error) }
+                is LatencyUiState.Idle -> item { Text(stringResource(R.string.latency_not_run), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                is LatencyUiState.Running -> item { Text(stringResource(R.string.latency_running), style = MaterialTheme.typography.bodyMedium) }
+                is LatencyUiState.Error -> item { Text(stringResource(R.string.latency_error, state.message), color = MaterialTheme.colorScheme.error) }
                 is LatencyUiState.Done -> {
                     item { LatencyCurve(state.points, Modifier.fillMaxWidth().height(180.dp)) }
                     items(state.points.size) { idx ->
                         val p = state.points[idx]
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(formatSize(p.sizeBytes), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(if (p.latencyNs >= 0) "%.1f ns".format(p.latencyNs) else "-", style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                            Text(if (p.latencyNs >= 0) stringResource(R.string.latency_ns, p.latencyNs) else "-", style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
                         }
                     }
                 }

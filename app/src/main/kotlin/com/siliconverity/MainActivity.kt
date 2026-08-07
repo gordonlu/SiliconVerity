@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -188,9 +189,9 @@ private fun SvBottomBar(nav: NavController) {
     val current by nav.currentBackStackEntryAsState()
     val currentRoute = current?.destination?.route
     val items = listOf(
-        Triple("home", "HOME", Icons.Filled.Home),
-        Triple("history", "HISTORY", Icons.Filled.Info),
-        Triple("settings", "SETTINGS", Icons.Filled.Settings),
+        Triple("home", stringResource(R.string.nav_home), Icons.Filled.Home),
+        Triple("history", stringResource(R.string.nav_history), Icons.Filled.Info),
+        Triple("settings", stringResource(R.string.nav_settings), Icons.Filled.Settings),
     )
     NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
         items.forEach { (route, label, icon) ->

@@ -21,10 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.siliconverity.core.designsystem.SvSpacing
+import com.siliconverity.core.designsystem.SvThermalStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -53,30 +55,44 @@ fun SettingsScreen() {
         ),
         verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
     ) {
-        item { SectionTitle("ABOUT") }
-        item { Kv("应用", "芯鉴 SiliconVerity") }
-        item { Kv("版本", env.appVersion) }
-        item { Kv("许可证", "GPL-3.0-only") }
+        item { SectionTitle(stringResource(R.string.settings_about)) }
+        item { Kv(stringResource(R.string.settings_app), "芯鉴 SiliconVerity") }
+        item { Kv(stringResource(R.string.settings_version), env.appVersion) }
+        item { Kv(stringResource(R.string.settings_license), "GPL-3.0-only") }
         item { Kv("applicationId", "com.siliconverity") }
-        item { Kv("平台基线", "Android 16 / API 36") }
+        item { Kv(stringResource(R.string.settings_platform), "Android 16 / API 36") }
 
-        item { Spacer(Modifier.height(SvSpacing.Md)); SectionTitle("ENVIRONMENT DIAGNOSTICS") }
-        item { Kv("省电模式", if (env.powerSave) "ON" else "OFF") }
-        item { Kv("充电状态", env.charging) }
-        item { Kv("热状态", env.thermal) }
-        item { Kv("电量", "${env.battery}%") }
+        item { Spacer(Modifier.height(SvSpacing.Md)); SectionTitle(stringResource(R.string.settings_env)) }
+        item { Kv(stringResource(R.string.settings_power_save), if (env.powerSave) stringResource(R.string.settings_on) else stringResource(R.string.settings_off)) }
+        item { Kv(stringResource(R.string.settings_charging), env.charging) }
+        item { Kv(stringResource(R.string.settings_thermal), SvThermalStatus.short(env.thermal)) }
+        item { Kv(stringResource(R.string.settings_battery), "${env.battery}%") }
 
-        item { Spacer(Modifier.height(SvSpacing.Md)); SectionTitle("BENCHMARK") }
+        item { Spacer(Modifier.height(SvSpacing.Md)); SectionTitle(stringResource(R.string.settings_benchmark)) }
         item {
             Text(
-                "Alpha 阶段不提供正式综合分。原始指标、统计与有效性见历史与运行详情。",
+                stringResource(R.string.settings_bench_desc_1),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         item {
             Text(
-                "每项测试 7 轮测量, 取 median, 辅以 MAD/CV。CV ≤ 3% 为 STABLE, > 7% 标 RETEST_RECOMMENDED。",
+                stringResource(R.string.settings_bench_desc_2),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        item {
+            Text(
+                stringResource(R.string.settings_bench_desc_3),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        item {
+            Text(
+                stringResource(R.string.settings_bench_desc_4),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -108,7 +124,7 @@ private fun readEnv(context: Context): EnvInfo {
     return EnvInfo(
         appVersion = version ?: "?",
         powerSave = pm?.isPowerSaveMode == true,
-        charging = if (bm?.isCharging == true) "charging" else "not charging",
+        charging = if (bm?.isCharging == true) "充电中" else "未充电",
         thermal = pm?.currentThermalStatus?.let(::thermalName) ?: "unknown",
         battery = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1,
     )

@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -46,11 +47,11 @@ fun GpuScreen(
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("GPU COMPUTE", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                TextButton(onClick = onBack) { Text("返回") }
+                Text(stringResource(R.string.gpu_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onBack) { Text(stringResource(R.string.gpu_back)) }
             }
             Text(
-                "Vulkan Compute MiniBench (无图形管线)。仅 Shader 吞吐与 Buffer 吞吐，不等于完整图形性能。",
+                stringResource(R.string.gpu_desc),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -65,30 +66,30 @@ fun GpuScreen(
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
                 ) {
-                    Text(if (running) "MEASURING..." else "RUN GPU COMPUTE", fontWeight = FontWeight.SemiBold)
+                    Text(if (running) stringResource(R.string.gpu_run_measuring) else stringResource(R.string.gpu_run_start), fontWeight = FontWeight.SemiBold)
                 }
                 if (running) {
                     androidx.compose.material3.OutlinedButton(
                         onClick = onStop,
                         modifier = Modifier.weight(1f),
                         shape = MaterialTheme.shapes.small,
-                    ) { Text("STOP") }
+                    ) { Text(stringResource(R.string.gpu_stop)) }
                 }
             }
         }
 
         when (state) {
             is GpuUiState.Idle -> item {
-                Text("尚未运行", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.gpu_not_run), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             is GpuUiState.Running -> item {
-                Text("FP32 Independent / Dependency / Buffer 各 3 预热 + 7 测量…", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.gpu_running_hint), style = MaterialTheme.typography.bodyMedium)
             }
             is GpuUiState.Done -> {
-                state.error?.let { item { Text("出错: $it", color = MaterialTheme.colorScheme.error) } }
-                item { ResultCard("FP32 INDEPENDENT", state.independent) }
-                item { ResultCard("FP32 DEPENDENCY", state.dependency) }
-                item { ResultCard("BUFFER THROUGHPUT", state.buffer) }
+                state.error?.let { item { Text(stringResource(R.string.gpu_error, it), color = MaterialTheme.colorScheme.error) } }
+                item { ResultCard(stringResource(R.string.gpu_card_independent), state.independent) }
+                item { ResultCard(stringResource(R.string.gpu_card_dependency), state.dependency) }
+                item { ResultCard(stringResource(R.string.gpu_card_buffer), state.buffer) }
             }
         }
     }
@@ -101,23 +102,24 @@ private fun ResultCard(title: String, r: NativeGpuResult?) {
             Text(title, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(SvSpacing.Xs))
             if (r == null) {
-                Text("无结果", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.gpu_no_result), color = MaterialTheme.colorScheme.error)
                 return@Column
             }
             if (!r.supported) {
-                Text("Vulkan 不可用", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.gpu_vulkan_unavailable), color = MaterialTheme.colorScheme.error)
                 r.invalidReason?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 return@Column
             }
             r.deviceName?.let { Text(it, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold) }
             Text(
-                "driver ${r.driverVersion ?: "?"}  •  Vulkan ${r.vulkanVersion ?: "?"}",
+                stringResource(R.string.gpu_driver_line, r.driverVersion ?: "?", r.vulkanVersion ?: "?"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (!r.arithType.isNullOrEmpty()) {
+            val arithType = r.arithType
+            if (!arithType.isNullOrEmpty()) {
                 Text(
-                    "arith ${r.arithType} / ${r.arithContract ?: "?"}",
+                    stringResource(R.string.gpu_arith_line, arithType, r.arithContract ?: "?"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -126,31 +128,29 @@ private fun ResultCard(title: String, r: NativeGpuResult?) {
             val mv = r.metricValue
             val unit = r.metricUnit ?: ""
             Text(
-                if (mv != null) "%.2f %s".format(mv, unit) else "-",
+                if (mv != null) stringResource(R.string.gpu_metric_value, mv, unit) else "-",
                 style = MaterialTheme.typography.headlineMedium,
                 fontFamily = FontFamily.Monospace,
             )
             Text(
-                "CV %.4f  •  GPU exec %,d ns".format(r.coefficientOfVariation ?: 0.0, r.gpuExecNs ?: 0L),
+                stringResource(R.string.gpu_cv_line, r.coefficientOfVariation ?: 0.0, r.gpuExecNs ?: 0L),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "submit diag  rec %,d / submit %,d / wait %,d ns".format(
-                    r.commandRecordingNs ?: 0L, r.queueSubmitNs ?: 0L, r.completionWaitNs ?: 0L,
-                ),
+                stringResource(R.string.gpu_submit_line, r.commandRecordingNs ?: 0L, r.queueSubmitNs ?: 0L, r.completionWaitNs ?: 0L),
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val checksumOk = r.checksumValid
             Text(
-                if (checksumOk) "checksum OK" else "checksum FAIL",
+                stringResource(if (checksumOk) R.string.gpu_checksum_ok else R.string.gpu_checksum_fail),
                 style = MaterialTheme.typography.labelSmall,
                 color = if (checksumOk) SvColors.Accent else MaterialTheme.colorScheme.error,
             )
             r.spirvHash?.let {
-                Text("spirv $it", style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.gpu_spirv, it), style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             r.invalidReason?.takeIf { it.isNotEmpty() }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)

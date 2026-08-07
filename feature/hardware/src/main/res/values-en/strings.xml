@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hw_title">HARDWARE</string>
+    <string name="hw_back">Back</string>
+    <string name="hw_refresh">REFRESH</string>
+    <string name="hw_error">Collection error: %1$s</string>
+    <string name="hw_unknown">Unknown</string>
+    <string name="hw_source_id">Source ID: %1$s</string>
+    <string name="hw_raw_value">Raw value: %1$s</string>
+    <string name="hw_collected_at">Collected at: %1$s</string>
+    <string name="hw_capability">Capability: %1$s</string>
+    <string name="hw_warnings">Warnings: %1$s</string>
+    <string name="hw_conflicts">Conflicting evidence:</string>
+    <string name="hw_low_memory">Low memory</string>
+    <string name="hw_memory_ok">Normal</string>
+    <string name="hw_charging">Charging</string>
+    <string name="hw_not_charging">Not charging</string>
+</resources>

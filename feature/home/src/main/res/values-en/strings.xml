@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_brand">SiliconVerity</string>
+    <string name="home_device_id">DEVICE ID</string>
+    <string name="home_hero_silicon">SILICON</string>
+    <string name="home_hero_verity">VERITY</string>
+    <string name="home_hero_tagline">VERIFY HARDWARE. TRUST PERFORMANCE.</string>
+    <string name="home_status_ready">READY</string>
+    <string name="home_status_measuring">MEASURING</string>
+    <string name="home_for_benchmark">FOR BENCHMARK</string>
+
+    <string name="home_metric_cpu">CPU</string>
+    <string name="home_metric_memory">MEMORY</string>
+    <string name="home_metric_storage">STORAGE</string>
+    <string name="home_metric_thermal">THERMAL</string>
+    <string name="home_metric_battery">BATTERY</string>
+    <string name="home_metric_system">SYSTEM</string>
+    <string name="home_unit_cores">CORES</string>
+    <string name="home_unit_soc">SOC</string>
+    <string name="home_unit_free">FREE</string>
+    <string name="home_unit_total">TOTAL</string>
+    <string name="home_unit_status">STATUS</string>
+    <string name="home_unit_temp">TEMP</string>
+    <string name="home_unit_android">ANDROID</string>
+    <string name="home_unit_chg">CHG</string>
+
+    <string name="home_last_run">LAST RUN</string>
+    <string name="home_no_official_score">NO OFFICIAL SCORE</string>
+    <string name="home_alpha_no_score">Run the full suite to generate an overall score</string>
+    <string name="home_last_run_line">%1$s • %2$s</string>
+
+    <string name="home_start_benchmark">START BENCHMARK</string>
+    <string name="home_measuring_btn">MEASURING…</string>
+    <string name="home_sustained">SUSTAINED</string>
+    <string name="home_gpu">GPU</string>
+    <string name="home_latency">LATENCY</string>
+
+    <string name="home_sv_performance">SV PERFORMANCE</string>
+    <string name="home_score_not_generated">No overall score (RETEST/INVALID or missing category)</string>
+    <string name="home_score_meta">Score %1$s · Ref %2$s · Confidence %3$s · Coverage %4$.0f%%</string>
+    <string name="home_cat_memory">Memory</string>
+    <string name="home_cat_io">App I/O</string>
+</resources>

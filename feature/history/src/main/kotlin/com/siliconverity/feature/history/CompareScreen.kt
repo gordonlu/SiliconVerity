@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,8 @@ import com.siliconverity.core.benchmark.ValidityLevel
 import com.siliconverity.core.benchmark.WorkloadFormat
 import com.siliconverity.core.designsystem.SvColors
 import com.siliconverity.core.designsystem.SvSpacing
+import com.siliconverity.core.designsystem.SvTime
+import com.siliconverity.core.designsystem.R as SvR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,12 +50,12 @@ fun CompareScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("COMPARE ${sel.size}/2", style = MaterialTheme.typography.labelLarge) },
+                title = { Text(stringResource(R.string.history_compare_count, sel.size), style = MaterialTheme.typography.labelLarge) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "返回") }
+                    IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.history_back)) }
                 },
                 actions = {
-                    if (sel.isNotEmpty()) TextButton(onClick = { vm.clear() }) { Text("清除") }
+                    if (sel.isNotEmpty()) TextButton(onClick = { vm.clear() }) { Text(stringResource(R.string.history_clear)) }
                 },
             )
         },
@@ -63,7 +66,7 @@ fun CompareScreen(
             verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
         ) {
             if (runs.isEmpty()) {
-                item { Text("尚无运行记录。", style = MaterialTheme.typography.bodyMedium) }
+                item { Text(stringResource(R.string.history_empty), style = MaterialTheme.typography.bodyMedium) }
             }
             items(runs, key = { it.runId }) { m ->
                 val idx = sel.indexOf(m.runId)
@@ -92,7 +95,7 @@ private fun RunSelectRow(m: RunManifest, selectedIdx: Int, onClick: () -> Unit) 
         Row(modifier = Modifier.padding(SvSpacing.Md), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
                 Text(m.workloadId, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                Text(m.startedAt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(SvTime.formatIso(m.startedAt, stringResource(SvR.string.sv_today), stringResource(SvR.string.sv_yesterday)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
                 "%.2f %s".format(WorkloadFormat.scale(m.workloadId, m.median), WorkloadFormat.unit(m.workloadId)),
@@ -113,23 +116,31 @@ private fun ComparisonPanel(a: RunManifest, b: RunManifest) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(SvSpacing.Md)) {
-            Text("A: ${a.workloadId}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("B: ${b.workloadId}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.history_compare_a, a.workloadId), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.history_compare_b, b.workloadId), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (a.workloadId != b.workloadId) {
-                Text("⚠ workload 不同, 对比仅作参考", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.history_compare_mismatch), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.height(SvSpacing.Sm))
-            Kv("median A", "%.2f %s".format(WorkloadFormat.scale(a.workloadId, a.median), WorkloadFormat.unit(a.workloadId)))
-            Kv("median B", "%.2f %s".format(WorkloadFormat.scale(b.workloadId, b.median), WorkloadFormat.unit(b.workloadId)))
+            Kv(stringResource(R.string.history_median_a), "%.2f %s".format(WorkloadFormat.scale(a.workloadId, a.median), WorkloadFormat.unit(a.workloadId)))
+            Kv(stringResource(R.string.history_median_b), "%.2f %s".format(WorkloadFormat.scale(b.workloadId, b.median), WorkloadFormat.unit(b.workloadId)))
             val delta = if (a.median != 0.0) (b.median - a.median) / a.median * 100.0 else 0.0
             val deltaColor = if (delta >= 0) SvColors.Accent else MaterialTheme.colorScheme.error
-            Text("Δ median %.2f%%".format(delta), style = MaterialTheme.typography.titleMedium, color = deltaColor, fontWeight = FontWeight.SemiBold)
-            Kv("cv A / B", "%.4f / %.4f".format(a.cv, b.cv))
-            Kv("validity A / B", "${a.validityLevel.name} / ${b.validityLevel.name}")
-            Kv("correctness A / B", "${if (a.correctnessStatus) "OK" else "FAIL"} / ${if (b.correctnessStatus) "OK" else "FAIL"}")
-            Kv("thermal A / B", "${a.thermalStatusStart} / ${b.thermalStatusStart}")
+            Text(stringResource(R.string.history_delta_median, delta), style = MaterialTheme.typography.titleMedium, color = deltaColor, fontWeight = FontWeight.SemiBold)
+            Kv(stringResource(R.string.history_cv_ab), "%.4f / %.4f".format(a.cv, b.cv))
+            Kv(stringResource(R.string.history_validity_ab), "${validityLabel(a.validityLevel)} / ${validityLabel(b.validityLevel)}")
+            Kv(stringResource(R.string.history_correctness_ab), "${if (a.correctnessStatus) "OK" else "FAIL"} / ${if (b.correctnessStatus) "OK" else "FAIL"}")
+            Kv(stringResource(R.string.history_thermal_ab), "${a.thermalStatusStart} / ${b.thermalStatusStart}")
         }
     }
+}
+
+@Composable
+private fun validityLabel(level: ValidityLevel): String = when (level) {
+    ValidityLevel.STABLE -> stringResource(SvR.string.sv_validity_stable)
+    ValidityLevel.VARIABLE -> stringResource(SvR.string.sv_validity_variable)
+    ValidityLevel.RETEST_RECOMMENDED -> stringResource(SvR.string.sv_validity_retest)
+    ValidityLevel.INVALID -> stringResource(SvR.string.sv_validity_invalid)
 }
 
 @Composable

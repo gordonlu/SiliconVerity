@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hw_title">硬件信息</string>
+    <string name="hw_back">返回</string>
+    <string name="hw_refresh">刷新</string>
+    <string name="hw_error">采集出错: %1$s</string>
+    <string name="hw_unknown">未知</string>
+    <string name="hw_source_id">来源 ID: %1$s</string>
+    <string name="hw_raw_value">原始值: %1$s</string>
+    <string name="hw_collected_at">采集时间: %1$s</string>
+    <string name="hw_capability">能力状态: %1$s</string>
+    <string name="hw_warnings">警告: %1$s</string>
+    <string name="hw_conflicts">冲突证据:</string>
+    <string name="hw_low_memory">内存不足</string>
+    <string name="hw_memory_ok">正常</string>
+    <string name="hw_charging">充电中</string>
+    <string name="hw_not_charging">未充电</string>
+</resources>

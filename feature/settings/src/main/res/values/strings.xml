@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_about">关于</string>
+    <string name="settings_env">环境诊断</string>
+    <string name="settings_benchmark">测试基准</string>
+    <string name="settings_app">应用</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_license">许可证</string>
+    <string name="settings_platform">平台基线</string>
+    <string name="settings_power_save">省电模式</string>
+    <string name="settings_charging">充电状态</string>
+    <string name="settings_thermal">热状态</string>
+    <string name="settings_battery">电量</string>
+    <string name="settings_on">开</string>
+    <string name="settings_off">关</string>
+    <string name="settings_bench_desc_1">正式评分 SVS-1.0: 基准设备 = 10,000 分。单项 = 1000 × clamp(实测/参考, 0.2, 5.0); 分类 = 加权几何平均; 综合分 = CPU 30% / GPU 35% / Memory 20% / AppIO 15%。</string>
+    <string name="settings_bench_desc_2">完整套件 14+1 项: CPU×5, 内存×2, 存储×4, GPU×3 (Vulkan Compute), 内存延迟。</string>
+    <string name="settings_bench_desc_3">参考集 SV-REF-2026-08-A 冻结前综合分显示未生成; RETEST/INVALID 项不参与评分。</string>
+    <string name="settings_bench_desc_4">测量: 预热收敛后自适应 5/7/11 轮采样, 取 median。CV ≤ 3% 为 STABLE, ≤ 7% 为 VARIABLE, > 7% 标 RETEST_RECOMMENDED; 正确性校验失败为 INVALID。</string>
+</resources>

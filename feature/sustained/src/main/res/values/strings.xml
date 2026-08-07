@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sustained_title">持续</string>
+    <string name="sustained_back">返回</string>
+    <string name="sustained_desc">持续 CPU 负载, 观察热衰减与性能保持率</string>
+    <string name="sustained_min">%1$d min</string>
+    <string name="sustained_start">开始持续测试 (%1$d min)</string>
+    <string name="sustained_elapsed">elapsed %1$.0f / %2$d s</string>
+    <string name="sustained_now">now  %1$.2f M ops/s</string>
+    <string name="sustained_thermal">thermal %1$s</string>
+    <string name="sustained_stop">STOP</string>
+    <string name="sustained_retention">retention</string>
+    <string name="sustained_initial">initial  %1$.2f M ops/s</string>
+    <string name="sustained_stable">stable   %1$.2f M ops/s</string>
+    <string name="sustained_worst">worst    %1$.2f M ops/s</string>
+    <string name="sustained_t90">t90 %1$.0fs  t80 %2$.0fs</string>
+    <string name="sustained_total_work">total work %1$,d</string>
+    <string name="sustained_duration">duration %1$ds, workload %2$s</string>
+    <string name="sustained_thermal_range">thermal %1$s -&gt; %2$s</string>
+    <string name="sustained_saved">saved: %1$s</string>
+    <string name="sustained_error">出错: %1$s</string>
+    <string name="sustained_done">完成</string>
+</resources>

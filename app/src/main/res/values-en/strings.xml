@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">SiliconVerity</string>
+    <string name="nav_home">HOME</string>
+    <string name="nav_history">HISTORY</string>
+    <string name="nav_settings">SETTINGS</string>
+    <string name="latency_title">MEMORY LATENCY</string>
+    <string name="latency_back">BACK</string>
+    <string name="latency_desc">Pointer chase (64B stride, random permutation defeats prefetch). ns/access grows with the working set, reflecting L1/LLC/RAM latency.</string>
+    <string name="latency_measuring">MEASURING...</string>
+    <string name="latency_run">RUN LATENCY</string>
+    <string name="latency_not_run">NOT RUN YET</string>
+    <string name="latency_running">Pointer chase per size…</string>
+    <string name="latency_error">Error: %1$s</string>
+    <string name="latency_ns">%1$.1f ns</string>
+</resources>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_title">历史</string>
+    <string name="history_compare">对比</string>
+    <string name="history_clear">清空</string>
+    <string name="history_empty">尚无运行记录。</string>
+    <string name="history_items">%1$d 项</string>
+    <string name="history_cv">CV %1$.4f</string>
+
+    <string name="history_back">返回</string>
+    <string name="history_run_manifest_title">运行清单</string>
+    <string name="history_version_time">v%1$s  •  %2$s</string>
+
+    <string name="history_sec_identity">身份</string>
+    <string name="history_sec_environment">环境</string>
+    <string name="history_sec_validity">有效性</string>
+    <string name="history_sec_protocol">协议</string>
+    <string name="history_sec_payload">负载</string>
+    <string name="history_sec_warnings">警告</string>
+    <string name="history_kv_run_id">runId</string>
+    <string name="history_kv_session_id">sessionId</string>
+    <string name="history_kv_protocol">protocol</string>
+    <string name="history_kv_spirv">spirv</string>
+    <string name="history_kv_arith">arith</string>
+    <string name="history_kv_device">device</string>
+    <string name="history_kv_soc">SoC</string>
+    <string name="history_kv_android">Android</string>
+    <string name="history_kv_abi">ABI</string>
+    <string name="history_kv_battery">battery</string>
+    <string name="history_kv_thermal">thermal</string>
+    <string name="history_kv_level">level</string>
+    <string name="history_kv_robust_cv">robustCv</string>
+    <string name="history_kv_score_eligible">scoreEligible</string>
+    <string name="history_kv_correctness">correctness</string>
+    <string name="history_kv_samples">samples</string>
+    <string name="history_kv_thresholds">thresholds</string>
+    <string name="history_kv_mad">mad</string>
+    <string name="history_kv_min_max">min / max</string>
+    <string name="history_kv_trend_slope">trendSlope</string>
+    <string name="history_kv_relative_trend">relativeTrend</string>
+    <string name="history_kv_outliers">outliers</string>
+    <string name="history_samples_count">samples (%1$d)</string>
+    <string name="history_sample_line">#%1$d  %2$d units  %3$d ns</string>
+    <string name="history_retention_value">retention %1$.1f%%</string>
+    <string name="history_kv_initial_stable">initial / stable</string>
+    <string name="history_m_ops_s">%1$.2f / %2$.2f M ops/s</string>
+    <string name="history_kv_t90">t90 / t80</string>
+    <string name="history_t90_line">%1$.0f / %2$.0f s</string>
+    <string name="history_kv_worst">worst window</string>
+    <string name="history_worst_line">%1$.2f M ops/s</string>
+    <string name="history_kv_total_work">total work</string>
+    <string name="history_total_work_line">%1$,d</string>
+    <string name="history_windows">windows: %1$d</string>
+    <string name="history_timeline_sample">t=%1$ds  %2$s</string>
+    <string name="history_points">%1$d points</string>
+    <string name="history_point_line">%1$s  %2$s</string>
+    <string name="history_latency_ns">%1$.1f ns</string>
+
+    <string name="history_run_id">运行 ID</string>
+    <string name="history_device">设备</string>
+    <string name="history_soc_reported">SoC (报告)</string>
+    <string name="history_android">Android</string>
+    <string name="history_abi">ABI</string>
+    <string name="history_battery">电池</string>
+    <string name="history_thermal">热状态</string>
+    <string name="history_app_version">App 版本</string>
+    <string name="history_engine_version">引擎版本</string>
+    <string name="history_median">median</string>
+    <string name="history_mad">MAD</string>
+    <string name="history_cv_label">CV</string>
+    <string name="history_correctness">正确性</string>
+    <string name="history_passed">通过</string>
+    <string name="history_failed">失败</string>
+    <string name="history_validity">有效性</string>
+    <string name="history_meas_samples">测量样本数</string>
+    <string name="history_warmup_samples">预热样本数</string>
+    <string name="history_warnings">警告</string>
+    <string name="history_warning_item">• %1$s</string>
+
+    <string name="history_compare_count">对比 %1$d/2</string>
+    <string name="history_compare_a">A: %1$s</string>
+    <string name="history_compare_b">B: %1$s</string>
+    <string name="history_compare_mismatch">⚠ workload 不同, 对比仅作参考</string>
+    <string name="history_median_a">median A</string>
+    <string name="history_median_b">median B</string>
+    <string name="history_delta_median">Δ median %1$.2f%%</string>
+    <string name="history_cv_ab">cv A / B</string>
+    <string name="history_validity_ab">validity A / B</string>
+    <string name="history_correctness_ab">correctness A / B</string>
+    <string name="history_thermal_ab">thermal A / B</string>
+</resources>

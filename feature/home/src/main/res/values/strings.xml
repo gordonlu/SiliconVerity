@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_brand">芯鉴</string>
+    <string name="home_device_id">DEVICE ID</string>
+    <string name="home_hero_silicon">SILICON</string>
+    <string name="home_hero_verity">VERITY</string>
+    <string name="home_hero_tagline">VERIFY HARDWARE. TRUST PERFORMANCE.</string>
+    <string name="home_status_ready">就绪</string>
+    <string name="home_status_measuring">测量中</string>
+    <string name="home_for_benchmark">可开始测试</string>
+
+    <string name="home_metric_cpu">CPU</string>
+    <string name="home_metric_memory">内存</string>
+    <string name="home_metric_storage">存储</string>
+    <string name="home_metric_thermal">热状态</string>
+    <string name="home_metric_battery">电池</string>
+    <string name="home_metric_system">系统</string>
+    <string name="home_unit_cores">核心</string>
+    <string name="home_unit_soc">SOC</string>
+    <string name="home_unit_free">空闲</string>
+    <string name="home_unit_total">总计</string>
+    <string name="home_unit_status">状态</string>
+    <string name="home_unit_temp">温度</string>
+    <string name="home_unit_android">ANDROID</string>
+    <string name="home_unit_chg">电量</string>
+
+    <string name="home_last_run">最近一次</string>
+    <string name="home_no_official_score">尚无正式成绩</string>
+    <string name="home_alpha_no_score">运行完整套件后生成综合分</string>
+    <string name="home_last_run_line">%1$s • %2$s</string>
+
+    <string name="home_start_benchmark">开始测试</string>
+    <string name="home_measuring_btn">测量中…</string>
+    <string name="home_sustained">持续</string>
+    <string name="home_gpu">GPU</string>
+    <string name="home_latency">延迟</string>
+
+    <string name="home_sv_performance">SV 性能</string>
+    <string name="home_score_not_generated">综合分未生成（有建议重测/无效项或分类缺失）</string>
+    <string name="home_score_meta">评分 %1$s · 参考 %2$s · 可信度 %3$s · 覆盖 %4$.0f%%</string>
+    <string name="home_cat_memory">内存</string>
+    <string name="home_cat_io">应用 I/O</string>
+</resources>

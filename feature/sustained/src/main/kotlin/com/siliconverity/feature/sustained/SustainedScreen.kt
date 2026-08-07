@@ -34,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,10 +60,10 @@ fun SustainedScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("SUSTAINED", style = MaterialTheme.typography.labelLarge) },
+                title = { Text(stringResource(R.string.sustained_title), style = MaterialTheme.typography.labelLarge) },
                 navigationIcon = {
                     IconButton(onClick = backAction) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.sustained_back))
                     }
                 },
             )
@@ -74,7 +75,7 @@ fun SustainedScreen(
             verticalArrangement = Arrangement.spacedBy(SvSpacing.Sm),
         ) {
             item {
-                Text("持续 CPU 负载, 观察热衰减与性能保持率", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.sustained_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             when (state) {
@@ -89,7 +90,7 @@ fun SustainedScreen(
                                         containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                                         contentColor = if (selected) SvColors.Background else MaterialTheme.colorScheme.onSurface,
                                     ),
-                                ) { Text("$m min") }
+                                ) { Text(stringResource(R.string.sustained_min, m)) }
                             }
                         }
                     }
@@ -98,7 +99,7 @@ fun SustainedScreen(
                             onClick = { onStart(durationMin * 60) },
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = MaterialTheme.shapes.small,
-                        ) { Text("START SUSTAINED ($durationMin min)", fontWeight = FontWeight.SemiBold) }
+                        ) { Text(stringResource(R.string.sustained_start, durationMin), fontWeight = FontWeight.SemiBold) }
                     }
                 }
 
@@ -109,20 +110,20 @@ fun SustainedScreen(
                         LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
                     }
                     item {
-                        Text("elapsed %.0f / %d s".format(p.elapsedSec, p.durationSec), style = MaterialTheme.typography.bodyMedium)
-                        Text("now  %.2f M ops/s".format(p.currentThroughput / 1_000_000.0), style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Monospace)
-                        Text("thermal ${p.thermalStatus}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.sustained_elapsed, p.elapsedSec, p.durationSec), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.sustained_now, p.currentThroughput / 1_000_000.0), style = MaterialTheme.typography.headlineMedium, fontFamily = FontFamily.Monospace)
+                        Text(stringResource(R.string.sustained_thermal, p.thermalStatus), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     item { ThroughputCurve(p.samples, Modifier.fillMaxWidth().height(160.dp)) }
                     item {
-                        Button(onClick = onStop, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) { Text("STOP") }
+                        Button(onClick = onStop, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) { Text(stringResource(R.string.sustained_stop)) }
                     }
                 }
 
                 is SustainedUiState.Done -> {
                     val r = state.result
                     item {
-                        Text("retention", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.sustained_retention), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
                             "%.1f%%".format(r.retention * 100),
                             style = MaterialTheme.typography.displayMedium,
@@ -131,24 +132,24 @@ fun SustainedScreen(
                         )
                     }
                     item {
-                        Text("initial  %.2f M ops/s".format(r.initialMedian / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
-                        Text("stable   %.2f M ops/s".format(r.stableMedian / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
-                        Text("worst    %.2f M ops/s".format(r.worstStableWindow / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
-                        Text("t90 %.0fs  t80 %.0fs".format(r.timeTo90Percent, r.timeTo80Percent), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("total work %,d".format(r.absoluteWorkCompleted), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("duration ${r.durationSec}s, workload ${r.workloadId}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("thermal ${r.thermalStatusStart} -> ${r.thermalStatusEnd}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        state.savedPath?.let { Text("saved: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
+                        Text(stringResource(R.string.sustained_initial, r.initialMedian / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                        Text(stringResource(R.string.sustained_stable, r.stableMedian / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                        Text(stringResource(R.string.sustained_worst, r.worstStableWindow / 1_000_000.0), style = MaterialTheme.typography.bodyMedium, fontFamily = FontFamily.Monospace)
+                        Text(stringResource(R.string.sustained_t90, r.timeTo90Percent, r.timeTo80Percent), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.sustained_total_work, r.absoluteWorkCompleted), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.sustained_duration, r.durationSec, r.workloadId), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.sustained_thermal_range, r.thermalStatusStart, r.thermalStatusEnd), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        state.savedPath?.let { Text(stringResource(R.string.sustained_saved, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
                     }
                     item { ThroughputCurve(r.samples, Modifier.fillMaxWidth().height(180.dp)) }
                     item {
-                        Button(onClick = onReset, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) { Text("完成") }
+                        Button(onClick = onReset, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small) { Text(stringResource(R.string.sustained_done)) }
                     }
                 }
 
                 is SustainedUiState.Error -> {
-                    item { Text("出错: ${state.message}", color = MaterialTheme.colorScheme.error) }
-                    item { Button(onClick = onReset, modifier = Modifier.fillMaxWidth()) { Text("返回") } }
+                    item { Text(stringResource(R.string.sustained_error, state.message), color = MaterialTheme.colorScheme.error) }
+                    item { Button(onClick = onReset, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.sustained_back)) } }
                 }
             }
         }

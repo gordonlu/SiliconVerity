@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,12 +22,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import com.siliconverity.core.benchmark.BenchmarkRun
 import com.siliconverity.core.benchmark.ValidityLevel
 import com.siliconverity.core.benchmark.primaryMetric
 import com.siliconverity.core.designsystem.SvSpacing
+import com.siliconverity.core.designsystem.SvTime
+import com.siliconverity.core.designsystem.R as SvR
 
 private data class Session(val id: String, val header: String, val runs: List<BenchmarkRun>)
 
@@ -38,7 +44,7 @@ fun HistoryScreen(
     val sessions = remember(state.runs) { groupSessions(state.runs) }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
         contentPadding = PaddingValues(
             start = SvSpacing.PageHorizontal,
             end = SvSpacing.PageHorizontal,
@@ -49,28 +55,28 @@ fun HistoryScreen(
     ) {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("HISTORY", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                TextButton(onClick = onCompare, enabled = !state.loading && state.runs.isNotEmpty()) { Text("对比") }
-                TextButton(onClick = onClear, enabled = !state.loading && state.runs.isNotEmpty()) { Text("清空") }
+                Text(stringResource(R.string.history_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onCompare, enabled = !state.loading && state.runs.isNotEmpty()) { Text(stringResource(R.string.history_compare)) }
+                TextButton(onClick = onClear, enabled = !state.loading && state.runs.isNotEmpty()) { Text(stringResource(R.string.history_clear)) }
             }
         }
         when {
             state.loading -> item { CircularProgressIndicator() }
             state.runs.isEmpty() -> item {
-                Text("尚无运行记录。", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.history_empty), style = MaterialTheme.typography.bodyMedium)
             }
             else -> {
                 sessions.forEach { session ->
                     item(key = "h-${session.id}") {
                         Column(modifier = Modifier.padding(top = SvSpacing.Sm, bottom = SvSpacing.Xs)) {
                             Text(
-                                session.header,
+                                SvTime.formatIso(session.header, stringResource(SvR.string.sv_today), stringResource(SvR.string.sv_yesterday)),
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.primary,
                             )
                             Text(
-                                "${session.runs.size} 项",
+                                stringResource(R.string.history_items, session.runs.size),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -124,7 +130,7 @@ private fun RunRow(run: BenchmarkRun, onOpenRun: (String) -> Unit) {
                 fontFamily = FontFamily.Monospace,
             )
             Text(
-                "CV %.4f".format(run.validity.robustCv),
+                stringResource(R.string.history_cv, run.validity.robustCv),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -141,9 +147,17 @@ private fun ValidityChip(level: ValidityLevel) {
         ValidityLevel.INVALID -> MaterialTheme.colorScheme.error
     }
     Text(
-        level.name,
+        validityLabel(level),
         style = MaterialTheme.typography.labelSmall,
         color = color,
         fontWeight = FontWeight.SemiBold,
     )
+}
+
+@Composable
+private fun validityLabel(level: ValidityLevel): String = when (level) {
+    ValidityLevel.STABLE -> stringResource(SvR.string.sv_validity_stable)
+    ValidityLevel.VARIABLE -> stringResource(SvR.string.sv_validity_variable)
+    ValidityLevel.RETEST_RECOMMENDED -> stringResource(SvR.string.sv_validity_retest)
+    ValidityLevel.INVALID -> stringResource(SvR.string.sv_validity_invalid)
 }

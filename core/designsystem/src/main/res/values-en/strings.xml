@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 有效性级别 -->
+    <string name="sv_validity_stable">STABLE</string>
+    <string name="sv_validity_variable">VARIABLE</string>
+    <string name="sv_validity_retest">RETEST RECOMMENDED</string>
+    <string name="sv_validity_invalid">INVALID</string>
+    <!-- 常用 -->
+    <string name="sv_today">Today</string>
+    <string name="sv_yesterday">Yesterday</string>
+    <string name="sv_not_available">—</string>
+    <string name="sv_unknown">Unknown</string>
+    <string name="sv_yes">Yes</string>
+    <string name="sv_no">No</string>
+</resources>

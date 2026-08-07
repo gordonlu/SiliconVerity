@@ -24,11 +24,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.siliconverity.core.benchmark.RunManifest
+import com.siliconverity.core.benchmark.ValidityLevel
 import com.siliconverity.core.benchmark.WorkloadFormat
+import com.siliconverity.core.designsystem.SvTime
+import com.siliconverity.core.designsystem.R as SvR
 import com.siliconverity.core.storage.RunManifestStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -49,10 +53,10 @@ fun RunDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("RUN MANIFEST", style = MaterialTheme.typography.labelLarge) },
+                title = { Text(stringResource(R.string.history_run_manifest_title), style = MaterialTheme.typography.labelLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.history_back))
                     }
                 },
                 actions = {
@@ -84,17 +88,21 @@ fun RunDetailScreen(
         ) {
             item {
                 Text(m.workloadId, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
-                Text("v${m.workloadVersion}  •  ${m.startedAt}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.history_version_time, m.workloadVersion, SvTime.formatIso(m.startedAt, stringResource(SvR.string.sv_today), stringResource(SvR.string.sv_yesterday))),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            item { KvRow("运行 ID", m.runId) }
-            item { KvRow("设备", m.deviceModel) }
-            item { KvRow("SoC (报告)", m.socReported) }
-            item { KvRow("Android", "${m.androidVersion} (${m.securityPatch})") }
-            item { KvRow("ABI", m.abi) }
-            item { KvRow("电池", "${m.batteryLevel}%  ${m.chargingState}") }
-            item { KvRow("热状态", "${m.thermalStatusStart} -> ${m.thermalStatusEnd}") }
-            item { KvRow("App 版本", m.appVersion) }
-            item { KvRow("引擎版本", m.benchmarkEngineVersion) }
+            item { KvRow(stringResource(R.string.history_run_id), m.runId) }
+            item { KvRow(stringResource(R.string.history_device), m.deviceModel) }
+            item { KvRow(stringResource(R.string.history_soc_reported), m.socReported) }
+            item { KvRow(stringResource(R.string.history_android), "${m.androidVersion} (${m.securityPatch})") }
+            item { KvRow(stringResource(R.string.history_abi), m.abi) }
+            item { KvRow(stringResource(R.string.history_battery), "${m.batteryLevel}%  ${m.chargingState}") }
+            item { KvRow(stringResource(R.string.history_thermal), "${m.thermalStatusStart} -> ${m.thermalStatusEnd}") }
+            item { KvRow(stringResource(R.string.history_app_version), m.appVersion) }
+            item { KvRow(stringResource(R.string.history_engine_version), m.benchmarkEngineVersion) }
             item {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -105,23 +113,31 @@ fun RunDetailScreen(
                     style = MaterialTheme.typography.displayMedium,
                     fontFamily = FontFamily.Monospace,
                 )
-                Text("median", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.history_median), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            item { KvRow("MAD", "%.4f".format(m.mad)) }
-            item { KvRow("CV", "%.4f".format(m.cv)) }
-            item { KvRow("正确性", if (m.correctnessStatus) "通过" else "失败") }
-            item { KvRow("有效性", m.validityLevel.name) }
-            item { KvRow("测量样本数", m.measurementSamples.size.toString()) }
-            item { KvRow("预热样本数", m.warmupSamples.size.toString()) }
+            item { KvRow(stringResource(R.string.history_mad), "%.4f".format(m.mad)) }
+            item { KvRow(stringResource(R.string.history_cv_label), "%.4f".format(m.cv)) }
+            item { KvRow(stringResource(R.string.history_correctness), if (m.correctnessStatus) stringResource(R.string.history_passed) else stringResource(R.string.history_failed)) }
+            item { KvRow(stringResource(R.string.history_validity), validityLabel(m.validityLevel)) }
+            item { KvRow(stringResource(R.string.history_meas_samples), m.measurementSamples.size.toString()) }
+            item { KvRow(stringResource(R.string.history_warmup_samples), m.warmupSamples.size.toString()) }
             if (m.warnings.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(8.dp))
-                    Text("警告", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                    m.warnings.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+                    Text(stringResource(R.string.history_warnings), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                    m.warnings.forEach { Text(stringResource(R.string.history_warning_item, it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun validityLabel(level: ValidityLevel): String = when (level) {
+    ValidityLevel.STABLE -> stringResource(SvR.string.sv_validity_stable)
+    ValidityLevel.VARIABLE -> stringResource(SvR.string.sv_validity_variable)
+    ValidityLevel.RETEST_RECOMMENDED -> stringResource(SvR.string.sv_validity_retest)
+    ValidityLevel.INVALID -> stringResource(SvR.string.sv_validity_invalid)
 }
 
 @Composable
