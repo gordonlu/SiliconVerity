@@ -21,6 +21,8 @@ data class ScorePack(
     val overallWeights: Map<String, Double>,
     val categories: Map<String, CategorySpec>,
     val references: Map<String, Double>,
+    /** 每个 reference 对应的精确 workloadVersion；缺失或不匹配时禁止评分。 */
+    val workloadVersions: Map<String, String> = emptyMap(),
     val clampMin: Double = 0.20,
     val clampMax: Double = 5.00,
     val multiplier: Double = 10.0,

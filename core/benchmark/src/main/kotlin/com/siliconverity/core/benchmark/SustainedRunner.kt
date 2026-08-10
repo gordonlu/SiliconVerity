@@ -15,10 +15,15 @@ class SustainedRunner(
         windowSec: Int = 1,
         onProgress: (SustainedProgress) -> Unit,
     ): SustainedResult = withContext(Dispatchers.Default) {
+        require(durationSec > 0) { "durationSec must be positive" }
+        require(windowSec > 0) { "windowSec must be positive" }
+        workload.calibrate(100)
         workload.warmUp()
+        val startedAt = env.nowIso()
         val start = clockNanos()
         val thermalStart = env.thermalStatusStart
-        val windowThroughputs = mutableListOf<Double>()
+        var windowWorkUnits = 0L
+        var windowDurationNanos = 0L
         val samples = mutableListOf<SustainedSample>()
         var nextWindowEnd = windowSec.toDouble()
         var totalWorkUnits = 0L
@@ -31,24 +36,28 @@ class SustainedRunner(
             val sample = workload.runOnce()
             totalWorkUnits += sample.workUnits
             val elapsedAfter = (clockNanos() - start) / 1_000_000_000.0
-            windowThroughputs += sample.throughput
+            windowWorkUnits += sample.workUnits
+            windowDurationNanos += sample.durationNanos
 
             if (elapsedAfter >= nextWindowEnd) {
-                val median = Statistics.median(windowThroughputs)
+                val throughput = if (windowDurationNanos > 0L) {
+                    windowWorkUnits.toDouble() / (windowDurationNanos / 1_000_000_000.0)
+                } else 0.0
                 val thermal = env.thermalStatusEnd()
                 samples += SustainedSample(
                     windowIndex = samples.size,
-                    elapsedSec = nextWindowEnd,
-                    throughput = median,
+                    elapsedSec = elapsedAfter,
+                    throughput = throughput,
                     thermalStatus = thermal,
                 )
-                windowThroughputs.clear()
-                nextWindowEnd += windowSec
+                windowWorkUnits = 0L
+                windowDurationNanos = 0L
+                nextWindowEnd = (kotlin.math.floor(elapsedAfter / windowSec) + 1.0) * windowSec
                 onProgress(
                     SustainedProgress(
                         elapsedSec = elapsedAfter,
                         durationSec = durationSec,
-                        currentThroughput = median,
+                        currentThroughput = throughput,
                         thermalStatus = thermal,
                         samples = samples.toList(),
                     )
@@ -56,17 +65,19 @@ class SustainedRunner(
             }
         }
 
-        if (windowThroughputs.isNotEmpty()) {
-            val median = Statistics.median(windowThroughputs)
+        val actualDurationNanos = clockNanos() - start
+        val actualDurationSec = actualDurationNanos / 1_000_000_000.0
+        if (windowDurationNanos > 0L) {
+            val throughput = windowWorkUnits.toDouble() / (windowDurationNanos / 1_000_000_000.0)
             samples += SustainedSample(
                 windowIndex = samples.size,
-                elapsedSec = (clockNanos() - start) / 1_000_000_000.0,
-                throughput = median,
+                elapsedSec = actualDurationSec,
+                throughput = throughput,
                 thermalStatus = env.thermalStatusEnd(),
             )
         }
 
-        val durationD = durationSec.toDouble()
+        val durationD = actualDurationSec
         val warmupSkip = minOf(5.0, durationD * 0.1)
         val initialLen = maxOf(10.0, durationD * 0.1)
         val stableLen = maxOf(30.0, durationD * 0.2)
@@ -83,6 +94,7 @@ class SustainedRunner(
         fun firstConsecutiveBelow(threshold: Double): Double {
             var run = 0
             for (s in samples) {
+                if (s.elapsedSec < initialEnd) continue
                 if (s.throughput < threshold) { run++; if (run >= 3) return s.elapsedSec } else run = 0
             }
             return durationD
@@ -90,12 +102,17 @@ class SustainedRunner(
         val t90 = if (initialMedian > 0) firstConsecutiveBelow(0.9 * initialMedian) else durationD
         val t80 = if (initialMedian > 0) firstConsecutiveBelow(0.8 * initialMedian) else durationD
 
-        // worstStableWindow: 滚动 5 窗口 median 的最小值 (非单秒绝对最小)
-        val worstWindow = if (samples.size < 5) {
-            if (samples.isEmpty()) 0.0 else samples.minOf { it.throughput }
+        // worstStableWindow: 滚动 60 秒窗口中位数；短测试使用全部可用窗口。
+        val rollingWindowCount = maxOf(1, 60 / windowSec)
+        val worstWindow = if (samples.size < rollingWindowCount) {
+            Statistics.median(samples.map { it.throughput })
         } else {
-            (0..samples.size - 5).map { i -> Statistics.median(samples.subList(i, i + 5).map { it.throughput }) }.minOrNull() ?: 0.0
+            (0..samples.size - rollingWindowCount).map { i ->
+                Statistics.median(samples.subList(i, i + rollingWindowCount).map { it.throughput })
+            }.minOrNull() ?: 0.0
         }
+
+        val correctness = workload.correctnessCheck()
 
         SustainedResult(
             runId = env.runId(),
@@ -105,7 +122,7 @@ class SustainedRunner(
             socReported = env.socReported,
             androidVersion = env.androidVersion,
             appVersion = env.appVersion,
-            startedAt = env.nowIso(),
+            startedAt = startedAt,
             durationSec = durationSec,
             windowSec = windowSec,
             samples = samples,
@@ -120,6 +137,8 @@ class SustainedRunner(
             thermalStatusEnd = env.thermalStatusEnd(),
             batteryLevel = env.batteryLevel,
             chargingState = env.chargingState,
+            actualDurationNanos = actualDurationNanos,
+            correctness = correctness,
         )
     }
 }

@@ -41,15 +41,40 @@ function(compile_shader name)
     )
 endfunction()
 
+function(compile_graphics_shader name stage)
+    set(src ${SHADER_DIR}/${name}.${stage})
+    set(spv ${BIN}/${name}_${stage}.spv)
+    set(hdr ${BIN}/${name}_${stage}_spv.h)
+    add_custom_command(
+        OUTPUT ${spv}
+        COMMAND ${GLSLC} --target-env=vulkan1.1 -fshader-stage=${stage} ${src} -o ${spv}
+        DEPENDS ${src}
+        COMMENT "glslc ${name}.${stage} -> ${name}_${stage}.spv"
+        VERBATIM
+    )
+    add_custom_command(
+        OUTPUT ${hdr}
+        COMMAND ${CMAKE_COMMAND} -DINPUT=${spv} -DOUTPUT=${hdr} -DNAME=${name}_${stage}_spv -P ${CMAKE_CURRENT_SOURCE_DIR}/embed_spv.cmake
+        DEPENDS ${spv} ${CMAKE_CURRENT_SOURCE_DIR}/embed_spv.cmake
+        COMMENT "embed ${name}_${stage}.spv -> ${name}_${stage}_spv.h"
+        VERBATIM
+    )
+endfunction()
+
 compile_shader(fp32)
 compile_shader(fp32_independent)
 compile_shader(buffer_triad)
+compile_graphics_shader(procedural_glow vert)
+compile_graphics_shader(procedural_glow frag)
 
 add_library(sv_gpu SHARED
     vulkan_bench.cpp
+    vulkan_graphics.cpp
     ${BIN}/fp32_spv.h
     ${BIN}/fp32_independent_spv.h
     ${BIN}/buffer_triad_spv.h
+    ${BIN}/procedural_glow_vert_spv.h
+    ${BIN}/procedural_glow_frag_spv.h
 )
 
 target_include_directories(sv_gpu PRIVATE ${BIN})

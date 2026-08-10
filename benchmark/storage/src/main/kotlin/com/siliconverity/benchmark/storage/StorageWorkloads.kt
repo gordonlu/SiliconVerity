@@ -108,10 +108,10 @@ class StorageWriteWorkload(
 
     override val spec: BenchmarkSpec = BenchmarkSpec(
         workloadId = "storage.seq_write.buffered",
-        workloadVersion = "0.1.0-alpha",
+        workloadVersion = "0.2.0-alpha",
         category = "STORAGE",
         measurementTarget = "buffered sequential write throughput (MB/s, page cache, no fsync)",
-        algorithm = "stream 32MB pre-generated source -> target, FileOutputStream (buffered, no fsync)",
+        algorithm = "stream 32MB pre-generated source -> target, calibrated repeated buffered copies in one sample",
         implementationBackend = "Kotlin java.io (chunked, OOM-safe)",
         dataSize = sizeBytes,
         threadPolicy = "single thread",
@@ -126,14 +126,22 @@ class StorageWriteWorkload(
     )
 
     private var seedCounter = 0x5AL
+    private var repeats = 1
+
+    override fun calibrate(targetMillis: Long) {
+        ensureSource()
+        val t0 = System.nanoTime()
+        writeBuffered()
+        repeats = storageRepeats(System.nanoTime() - t0, targetMillis)
+    }
 
     override fun warmUp() { writeBuffered() }
 
     override fun runOnce(): Sample {
         val t0 = System.nanoTime()
-        writeBuffered()
+        repeat(repeats) { writeBuffered() }
         val t1 = System.nanoTime()
-        return Sample(index = -1, workUnits = sizeBytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
+        return Sample(index = -1, workUnits = sizeBytes * repeats, durationNanos = t1 - t0, timestamp = Instant.now().toString())
     }
 
     override fun correctnessCheck(): CorrectnessResult {
@@ -190,10 +198,10 @@ class StorageRandomWriteFsyncWorkload(
 
     override val spec: BenchmarkSpec = BenchmarkSpec(
         workloadId = "storage.random_write.fsync",
-        workloadVersion = "1.0.0",
+        workloadVersion = "2.0.0",
         category = "STORAGE",
         measurementTarget = "random 4KB write + fdatasync throughput (MB/s, 闪存随机写 + GC 受限)",
-        algorithm = "256 次 4KB 随机偏移写 + 每次 fdatasync (预生成偏移与数据, 只计时写+sync)",
+        algorithm = "calibrated N×256 次 4KB deterministic-random offset writes + fdatasync per write",
         implementationBackend = "Kotlin java.io RandomAccessFile",
         dataSize = sizeBytes,
         threadPolicy = "single thread",
@@ -216,18 +224,22 @@ class StorageRandomWriteFsyncWorkload(
     private var offsets = IntArray(0)
     private var block = ByteArray(blockSize)
     private var warmed = false
+    private var repeats = 1
+    private val offsetRandom = Random(0xBEEF)
 
-    private fun prepare() {
+    private fun prepareFile() {
         ensureSource()
         copySourceToTarget()
-        val r = Random(0xBEEF)
-        offsets = IntArray(writesPerRound) { r.nextInt(blockCount) }
-        r.nextBytes(block)
+        offsetRandom.nextBytes(block)
+    }
+
+    private fun prepareOffsets() {
+        offsets = IntArray(writesPerRound * repeats) { offsetRandom.nextInt(blockCount) }
     }
 
     private fun runRound() {
         RandomAccessFile(file, "rw").use { raf ->
-            for (i in 0 until writesPerRound) {
+            for (i in offsets.indices) {
                 raf.seek(offsets[i].toLong() * blockSize)
                 raf.write(block)
                 raf.fd.sync()
@@ -236,15 +248,26 @@ class StorageRandomWriteFsyncWorkload(
     }
 
     override fun warmUp() {
-        if (!warmed) { prepare(); warmed = true }
+        if (!warmed) { prepareFile(); warmed = true }
+        prepareOffsets()
         runRound()
     }
 
+    override fun calibrate(targetMillis: Long) {
+        if (!warmed) { prepareFile(); warmed = true }
+        repeats = 1
+        prepareOffsets()
+        val t0 = System.nanoTime()
+        runRound()
+        repeats = storageRepeats(System.nanoTime() - t0, targetMillis)
+    }
+
     override fun runOnce(): Sample {
+        prepareOffsets()
         val t0 = System.nanoTime()
         runRound()
         val t1 = System.nanoTime()
-        val bytes = writesPerRound * blockSize.toLong()
+        val bytes = offsets.size * blockSize.toLong()
         return Sample(index = -1, workUnits = bytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
     }
 
@@ -253,7 +276,7 @@ class StorageRandomWriteFsyncWorkload(
             return CorrectnessResult(passed = false, kind = ChecksumKind.EXACT, finite = true, reason = "file size mismatch")
         }
         var ok = true
-        val probe = IntArray(minOf(8, offsets.size)) { offsets[it] }
+        val probe = offsets.distinct()
         RandomAccessFile(file, "r").use { raf ->
             val buf = ByteArray(blockSize)
             for (off in probe) {
@@ -276,10 +299,10 @@ class StorageReadWorkload(
 
     override val spec: BenchmarkSpec = BenchmarkSpec(
         workloadId = "storage.seq_read.warm",
-        workloadVersion = "0.1.0-alpha",
+        workloadVersion = "0.2.0-alpha",
         category = "STORAGE",
         measurementTarget = "warm sequential read throughput (MB/s, page-cached)",
-        algorithm = "read 32MB file chunked (warm, page-cached)",
+        algorithm = "read 32MB file chunked, calibrated repeated warm reads in one sample",
         implementationBackend = "Kotlin java.io (chunked, OOM-safe)",
         dataSize = sizeBytes,
         threadPolicy = "single thread",
@@ -294,6 +317,14 @@ class StorageReadWorkload(
     )
 
     private var warmed = false
+    private var repeats = 1
+
+    override fun calibrate(targetMillis: Long) {
+        if (!warmed) { writeBuffered(); warmed = true }
+        val t0 = System.nanoTime()
+        readInto()
+        repeats = storageRepeats(System.nanoTime() - t0, targetMillis)
+    }
 
     override fun warmUp() {
         if (!warmed) { writeBuffered(); warmed = true }
@@ -302,13 +333,20 @@ class StorageReadWorkload(
 
     override fun runOnce(): Sample {
         val t0 = System.nanoTime()
-        readInto()
+        repeat(repeats) { readInto() }
         val t1 = System.nanoTime()
-        return Sample(index = -1, workUnits = sizeBytes, durationNanos = t1 - t0, timestamp = Instant.now().toString())
+        return Sample(index = -1, workUnits = sizeBytes * repeats, durationNanos = t1 - t0, timestamp = Instant.now().toString())
     }
 
     override fun correctnessCheck(): CorrectnessResult {
         val ok = verifyReadback()
         return CorrectnessResult(passed = ok, kind = ChecksumKind.EXACT, finite = true, reason = if (!ok) "checksum mismatch" else null)
     }
+}
+
+private fun storageRepeats(probeNanos: Long, targetMillis: Long): Int {
+    if (probeNanos <= 0L) return 1
+    return kotlin.math.round(targetMillis.coerceAtLeast(50L) * 1_000_000.0 / probeNanos)
+        .toInt()
+        .coerceIn(1, 512)
 }

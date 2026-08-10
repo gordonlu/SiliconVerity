@@ -31,7 +31,6 @@ Java_com_siliconverity_nativecpu_IntBranchWorkload_nativeRunOnce(JNIEnv* env, jc
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_siliconverity_nativecpu_IntBranchWorkload_nativeCorrectnessCheck(JNIEnv*, jclass) {
-    uint64_t a = int_branch_loop(42ull, 10000ull);
-    uint64_t b = int_branch_loop(42ull, 10000ull);
-    return (a == b) ? JNI_TRUE : JNI_FALSE;
+    constexpr uint64_t GOLDEN = 0x3611c1e9dc042931ull;
+    return int_branch_loop(42ull, 10000ull) == GOLDEN ? JNI_TRUE : JNI_FALSE;
 }

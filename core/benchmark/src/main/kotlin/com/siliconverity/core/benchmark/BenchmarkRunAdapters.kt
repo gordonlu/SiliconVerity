@@ -35,6 +35,7 @@ fun RunManifest.toBenchmarkRun(): BenchmarkRun {
             thermalStatusStart = thermalStatusStart,
             thermalStatusEnd = thermalStatusEnd,
             thermalTimeline = thermalTimeline,
+            gameMode = gameMode,
         ),
         protocol = protocol ?: ProtocolSnapshot(
             protocolVersion = benchmarkProtocolVersion,
@@ -65,8 +66,9 @@ fun RunManifest.toBenchmarkRun(): BenchmarkRun {
             summary = Statistics.summarize(measurementSamples),
         ),
         startedAt = startedAt,
-        endedAt = startedAt,
-        actualDurationNanos = 0L,
+        endedAt = endedAt.ifEmpty { startedAt },
+        actualDurationNanos = actualDurationNanos,
+        diagnostics = diagnostics,
         warnings = warnings,
     )
 }
@@ -93,12 +95,19 @@ fun SustainedResult.toBenchmarkRun(): BenchmarkRun = BenchmarkRun(
         thermalStatusEnd = thermalStatusEnd,
     ),
     protocol = ProtocolSnapshot("0.1.0", 0.0, 0.0, 0.0, samples.size, 0.03, 0.07, 0, true),
-    correctness = CorrectnessResult(passed = true, kind = ChecksumKind.EXACT),
-    validity = ValidityResult(valid = true, scoreEligible = false, stability = ValidityLevel.STABLE, robustCv = 0.0),
+    correctness = correctness,
+    validity = ValidityResult(
+        valid = correctness.passed,
+        scoreEligible = false,
+        stability = if (correctness.passed) ValidityLevel.STABLE else ValidityLevel.INVALID,
+        robustCv = 0.0,
+        reason = correctness.reason,
+    ),
     payload = BenchmarkPayload.Timeline(result = this),
     startedAt = startedAt,
     endedAt = startedAt,
-    actualDurationNanos = durationSec * 1_000_000_000L,
+    actualDurationNanos = actualDurationNanos,
+    warnings = if (correctness.passed) emptyList() else listOf(correctness.reason ?: "sustained correctness failed"),
 )
 
 fun MemoryLatencyResult.toBenchmarkRun(): BenchmarkRun {

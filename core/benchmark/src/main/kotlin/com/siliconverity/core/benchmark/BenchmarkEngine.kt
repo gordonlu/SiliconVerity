@@ -31,8 +31,12 @@ class BenchmarkEngine(
         val spec = workload.spec
         onPhase?.onPhase(BenchmarkPhase.CALIBRATING, null, null)
         workload.calibrate(protocol.targetRoundMillis.toLong())
+        val startedAt = environment.nowIso()
         val runStart = monotonicClockNanos()
         val thermalStart = environment.thermalStatusStart
+        val batteryStart = environment.batteryLevel
+        val chargingStart = environment.chargingState
+        val powerSaveStart = environment.powerSaveMode
         workload.warmUp()
         val warmupSamples = mutableListOf<Sample>()
         val warmupDeadlineMs = spec.warmupMaxMillis
@@ -91,10 +95,13 @@ class BenchmarkEngine(
         onPhase?.onPhase(BenchmarkPhase.FINALIZING, null, null)
 
         val warnings = mutableListOf<String>()
-        if (!stable) warnings += "warmup did not converge within max time"
+        if (!stable && warmupDeadlineMs > 0) warnings += "warmup did not converge within max time"
         if (cv.isNaN()) warnings += "cv unavailable (zero median)"
         if (cv > protocol.variableCvThreshold) warnings += "cv %.4f exceeds threshold %.4f".format(cv, protocol.variableCvThreshold)
 
+        val endedAt = environment.nowIso()
+        val actualDurationNanos = monotonicClockNanos() - runStart
+        val thermalEnd = environment.thermalStatusEnd()
         return RunManifest(
             runId = environment.runId(),
             sessionId = "",
@@ -103,17 +110,19 @@ class BenchmarkEngine(
             benchmarkEngineVersion = environment.engineVersion,
             workloadId = spec.workloadId,
             workloadVersion = spec.workloadVersion,
-            startedAt = environment.nowIso(),
+            startedAt = startedAt,
+            endedAt = endedAt,
+            actualDurationNanos = actualDurationNanos,
             abi = environment.abi,
             androidVersion = environment.androidVersion,
             securityPatch = environment.securityPatch,
             deviceModel = environment.deviceModel,
             socReported = environment.socReported,
-            batteryLevel = environment.batteryLevel,
-            chargingState = environment.chargingState,
-            powerSaveMode = environment.powerSaveMode,
-            thermalStatusStart = environment.thermalStatusStart,
-            thermalStatusEnd = environment.thermalStatusEnd(),
+            batteryLevel = batteryStart,
+            chargingState = chargingStart,
+            powerSaveMode = powerSaveStart,
+            thermalStatusStart = thermalStart,
+            thermalStatusEnd = thermalEnd,
             testOrder = listOf(spec.workloadId),
             warmupSamples = warmupSamples,
             measurementSamples = measurementSamples,
@@ -128,11 +137,11 @@ class BenchmarkEngine(
             correctness = correctness,
             protocol = ProtocolSnapshot(
                 protocolVersion = protocol.protocolVersion,
-                warmupMinSeconds = protocol.warmupMinSeconds,
-                warmupMaxSeconds = protocol.warmupMaxSeconds,
-                warmupConvergeThreshold = protocol.warmupConvergeThreshold,
+                warmupMinSeconds = spec.warmupMinMillis / 1000.0,
+                warmupMaxSeconds = spec.warmupMaxMillis / 1000.0,
+                warmupConvergeThreshold = spec.warmupConvergeThreshold,
                 measurementSamplesActual = measurementSamples.size,
-                stableCvThreshold = protocol.stableCvThreshold,
+                stableCvThreshold = stableCvThreshold,
                 variableCvThreshold = protocol.variableCvThreshold,
                 targetRoundMillis = protocol.targetRoundMillis,
                 provisional = protocol.provisional,
@@ -141,8 +150,9 @@ class BenchmarkEngine(
             checksumKind = workload.checksumKind,
             thermalTimeline = listOf(
                 ThermalSample(0.0, thermalStart),
-                ThermalSample((monotonicClockNanos() - runStart) / 1_000_000_000.0, environment.thermalStatusEnd()),
+                ThermalSample(actualDurationNanos / 1_000_000_000.0, thermalEnd),
             ),
+            diagnostics = workload.diagnostics,
             warnings = warnings,
         )
     }

@@ -1,5 +1,7 @@
 #include <jni.h>
+#include <algorithm>
 #include <cmath>
+#include <cstring>
 #include "sv_cpu_internal.h"
 
 static float fp32_fma_loop(uint64_t seed, uint64_t iterations) {
@@ -25,7 +27,10 @@ static float fp32_fma_loop(uint64_t seed, uint64_t iterations) {
         a7 = a7 * x + y;
     }
     float sum = a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7;
-    g_sink = (uint64_t)(sum * 1e9f);
+    uint32_t bits = 0;
+    static_assert(sizeof(bits) == sizeof(sum));
+    std::memcpy(&bits, &sum, sizeof(bits));
+    g_sink = bits;
     return sum;
 }
 
@@ -47,6 +52,15 @@ Java_com_siliconverity_nativecpu_Fp32FmaWorkload_nativeRunOnce(JNIEnv* env, jcla
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_siliconverity_nativecpu_Fp32FmaWorkload_nativeCorrectnessCheck(JNIEnv*, jclass) {
     float r1 = fp32_fma_loop(99ull, 10000ull);
-    float r2 = fp32_fma_loop(99ull, 10000ull);
-    return (r1 == r2 && std::isfinite(r1) && std::isfinite(r2)) ? JNI_TRUE : JNI_FALSE;
+    float base = (float)(99ull & 0xffffff) * (1.0f / 16777216.0f) + 1.0f;
+    float ref[8] = {base, base + 0.1f, base + 0.2f, base + 0.3f,
+                    base + 0.4f, base + 0.5f, base + 0.6f, base + 0.7f};
+    for (int i = 0; i < 10000; ++i) {
+        for (float& value : ref) value = std::fma(value, 1.0000001f, 0.0000001f);
+    }
+    float expected = 0.0f;
+    for (float value : ref) expected += value;
+    float tolerance = std::max(1e-5f, std::fabs(expected) * 2e-6f);
+    return (std::isfinite(r1) && std::isfinite(expected) && std::fabs(r1 - expected) <= tolerance)
+        ? JNI_TRUE : JNI_FALSE;
 }

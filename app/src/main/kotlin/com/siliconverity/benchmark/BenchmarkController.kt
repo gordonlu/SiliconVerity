@@ -1,6 +1,8 @@
 package com.siliconverity.benchmark
 
 import android.app.Application
+import android.app.GameManager
+import android.app.GameState
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -52,6 +54,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     private val engine = BenchmarkEngine({ System.nanoTime() }, env)
     private val benchDir = File(application.filesDir, "bench")
     private val gpuBench = VulkanBench()
+    private val gameManager = application.getSystemService(GameManager::class.java)
 
     /** 套件顺序 = 展示顺序: CPU 5, MEMORY 3 (含延迟), GPU 3, APP I/O 4 = 15 项。 */
     private data class SuiteItem(val workloadId: String, val workload: Workload?, val isLatency: Boolean)
@@ -128,6 +131,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     }
 
     override fun onCleared() {
+        setGpuGameState(active = false)
         runCatching { appContext.unregisterReceiver(phoneReceiver) }
         super.onCleared()
     }
@@ -167,6 +171,12 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
             try {
                 // 测试期间保持屏幕常亮 (跑分时无操作会触发自动锁屏 -> 暂停)
                 acquireScreenLock()
+                // 完整测试从开始即声明实时游戏状态，让 OEM 游戏策略在 CPU/
+                // Memory 阶段完成收敛，禁止临近 GPU 才切换造成 P-state transition。
+                setGpuGameState(active = true)
+                // suite 是 ViewModel 生命周期内复用的对象。每次用户点击完整测试都
+                // 必须清除上一轮 GPU native 样本，禁止第二轮复用旧成绩。
+                suite.forEach { (it.workload as? GpuVulkanWorkload)?.reset() }
                 // 离开 Done: 结果页守卫据此 pop 回首页, 避免双 pop 弹空栈
                 _state.value = BenchmarkUiState.Idle
                 val sessionId = java.util.UUID.randomUUID().toString()
@@ -178,6 +188,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
 
                 for ((index, item) in suite.withIndex()) {
                     awaitResume()
+                    val gpuItem = item.workloadId.startsWith("vulkan.")
                     val progressState = { phase: BenchmarkPhase, sampleIndex: Int?, sampleCount: Int? ->
                         _state.value = BenchmarkUiState.Running(
                             sessionId = sessionId,
@@ -229,23 +240,20 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                             progressState(phase, sIdx, sCnt)
                         })
                     }
-                    var manifest = outcome.getOrNull()?.copy(sessionId = sessionId)
+                    var manifest = outcome.getOrNull()?.copy(
+                        sessionId = sessionId,
+                        testOrder = suite.map { it.workloadId },
+                        gameMode = if (gpuItem) currentGameMode() else "",
+                    )
                     if (manifest == null) {
                         error = outcome.exceptionOrNull()?.message
                         completed += WorkloadProgress(item.workloadId, categoryOf(item.workloadId), false)
                         progressState(BenchmarkPhase.FINALIZING, null, null)
                         break
                     }
-                    // 外部干扰 (来电/推送/后台任务) 会导致高 CV -> RETEST。
-                    // GPU workload 明显低于"本机历史基线" (疑似半速/节能, 与参考值无关)
-                    // 自动重测最多 2 次取最优; 首次运行无基线则仅记录。
-                    val gpuLowVsBaseline = item.workloadId.startsWith("vulkan.") && runCatching {
-                        val base = gpuBaseline(item.workloadId) ?: return@runCatching false
-                        base > 0.0 && manifest.median / base < 0.75
-                    }.getOrDefault(false)
-                    if (manifest != null &&
-                        (manifest.validityLevel == ValidityLevel.RETEST_RECOMMENDED || gpuLowVsBaseline)
-                    ) {
+                    // GPU 适配器内部负责在性能档位切换时选择 correctness 合格的
+                    // 最高吞吐候选；Controller 不再追加基于 CV/历史值的第二层重跑。
+                    if (manifest != null && !gpuItem && manifest.validityLevel == ValidityLevel.RETEST_RECOMMENDED) {
                         var current: com.siliconverity.core.benchmark.RunManifest = manifest
                         for (attempt in 1..2) {
                             progressState(BenchmarkPhase.FINALIZING, null, null)
@@ -254,18 +262,18 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                                 engine.execute(workload, onPhase = { phase, sIdx, sCnt ->
                                     progressState(phase, sIdx, sCnt)
                                 })
-                            }.getOrNull()?.copy(sessionId = sessionId)
+                            }.getOrNull()?.copy(
+                                sessionId = sessionId,
+                                testOrder = suite.map { it.workloadId },
+                                gameMode = if (gpuItem) currentGameMode() else "",
+                            )
                             if (retry == null) break
                             if (retry.cv < current.cv) {
                                 current = retry.copy(
                                     warnings = retry.warnings + "auto-retry #$attempt (高波动, 可能外部干扰)",
                                 )
                             }
-                            val ratioOk = !item.workloadId.startsWith("vulkan.") || runCatching {
-                                val base = gpuBaseline(item.workloadId) ?: return@runCatching true
-                                base <= 0.0 || current.median / base >= 0.75
-                            }.getOrDefault(true)
-                            if (current.validityLevel != ValidityLevel.RETEST_RECOMMENDED && ratioOk) break
+                            if (current.validityLevel != ValidityLevel.RETEST_RECOMMENDED) break
                         }
                         manifest = current
                     }
@@ -288,6 +296,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
             } catch (e: Exception) {
                 _state.value = BenchmarkUiState.Done(emptyList(), e.message)
             } finally {
+                setGpuGameState(active = false)
                 releaseScreenLock()
                 BenchmarkRunCoordinator.release()
             }
@@ -296,6 +305,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
 
     fun stop() {
         job?.cancel()
+        setGpuGameState(active = false)
         releaseScreenLock()
         _state.value = BenchmarkUiState.Idle
     }
@@ -307,15 +317,25 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         else -> BenchmarkCategory.APP_IO
     }
 
-    /** 本机历史基线: 该 workload 历史 session-median 的中位数 (不含本次, 独立于参考包)。 */
-    private fun gpuBaseline(workloadId: String): Double? {
-        val runs = runCatching { store.list() }.getOrDefault(emptyList())
-        val medians = runs
-            .filter { it.identity.workloadId == workloadId }
-            .mapNotNull { (it.payload as? com.siliconverity.core.benchmark.BenchmarkPayload.Scalar)?.summary?.median }
-            .sorted()
-        if (medians.isEmpty()) return null
-        return medians[medians.size / 2]
+    private fun setGpuGameState(active: Boolean) {
+        runCatching {
+            gameManager?.setGameState(
+                GameState(
+                    false,
+                    if (active) GameState.MODE_GAMEPLAY_UNINTERRUPTIBLE else GameState.MODE_NONE,
+                ),
+            )
+        }
+    }
+
+    private fun currentGameMode(): String = when (gameManager?.gameMode) {
+        GameManager.GAME_MODE_PERFORMANCE -> "PERFORMANCE"
+        GameManager.GAME_MODE_BATTERY -> "BATTERY"
+        GameManager.GAME_MODE_STANDARD -> "STANDARD"
+        GameManager.GAME_MODE_CUSTOM -> "CUSTOM"
+        GameManager.GAME_MODE_UNSUPPORTED -> "UNSUPPORTED"
+        null -> "UNAVAILABLE"
+        else -> "UNKNOWN"
     }
 
     private fun captureEnvironment(): LiveEnvironmentSnapshot {

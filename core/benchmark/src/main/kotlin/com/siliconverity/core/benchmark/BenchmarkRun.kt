@@ -35,6 +35,7 @@ data class EnvironmentSnapshot(
     val thermalStatusStart: String,
     val thermalStatusEnd: String,
     val thermalTimeline: List<ThermalSample> = emptyList(),
+    val gameMode: String = "",
 )
 
 /** 协议快照 (本次实际使用的 protocol 参数)。 */
@@ -90,5 +91,6 @@ data class BenchmarkRun(
     val startedAt: String,
     val endedAt: String,
     val actualDurationNanos: Long,
+    val diagnostics: List<String> = emptyList(),
     val warnings: List<String> = emptyList(),
 )

@@ -55,7 +55,6 @@ Java_com_siliconverity_nativecpu_CpuIntegerWorkload_nativeRunOnce(JNIEnv* env, j
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_siliconverity_nativecpu_CpuIntegerWorkload_nativeCorrectnessCheck(JNIEnv*, jclass) {
-    uint64_t m1 = int_alu_ilp_loop(42ull, 10000ull);
-    uint64_t m2 = int_alu_ilp_loop(42ull, 10000ull);
-    return (m1 == m2) ? JNI_TRUE : JNI_FALSE;
+    constexpr uint64_t GOLDEN = 0x3f5422e1f7b205c8ull;
+    return int_alu_ilp_loop(42ull, 10000ull) == GOLDEN ? JNI_TRUE : JNI_FALSE;
 }

@@ -20,6 +20,16 @@ data class NativeGpuResult(
     val invalidReason: String?,
     val retestNeeded: Boolean = false,
     val diag: String? = null,
+    val sampleNanos: List<Long> = emptyList(),
+    val totalFrames: Long? = null,
+    val elapsedNanos: Long? = null,
+    val p95FrameNanos: Long? = null,
+    val surfaceWidth: Int? = null,
+    val surfaceHeight: Int? = null,
+    val presentMode: String? = null,
+    val presentedFps: Double? = null,
+    val workloadIterations: Int? = null,
+    val measuredSceneIterations: Long? = null,
 ) {
     companion object {
         fun parse(s: String): NativeGpuResult {
@@ -49,6 +59,19 @@ data class NativeGpuResult(
                 invalidReason = g("invalidReason"),
                 retestNeeded = g("retest") == "1",
                 diag = g("diag"),
+                sampleNanos = g("sampleNs")
+                    ?.split(',')
+                    ?.mapNotNull { it.toLongOrNull()?.takeIf { value -> value > 0L } }
+                    .orEmpty(),
+                totalFrames = g("totalFrames")?.toLongOrNull(),
+                elapsedNanos = g("elapsedNs")?.toLongOrNull(),
+                p95FrameNanos = g("p95FrameNs")?.toLongOrNull(),
+                surfaceWidth = g("surfaceWidth")?.toIntOrNull(),
+                surfaceHeight = g("surfaceHeight")?.toIntOrNull(),
+                presentMode = g("presentMode"),
+                presentedFps = g("presentedFps")?.toDoubleOrNull(),
+                workloadIterations = g("workloadIterations")?.toIntOrNull(),
+                measuredSceneIterations = g("measuredSceneIterations")?.toLongOrNull(),
             )
         }
     }

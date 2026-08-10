@@ -6,11 +6,16 @@
     <application
         android:name=".SiliconVerityApp"
         android:allowBackup="false"
+        android:appCategory="game"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SiliconVerity">
+
+        <meta-data
+            android:name="android.game_mode_config"
+            android:resource="@xml/game_mode_config" />
 
         <activity
             android:name=".MainActivity"

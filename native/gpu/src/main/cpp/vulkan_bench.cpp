@@ -7,7 +7,6 @@
 #include <cmath>
 #include <cstdio>
 #include <dlfcn.h>
-// #include <android/log.h>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -21,28 +20,116 @@
 
 namespace {
 
+static uint64_t monotonic_nanos();
+
 // ---- ADPF (API 36 notifyWorkloadIncrease, dlsym 运行时解析) ----
 typedef int (*NotifyWorkloadIncreaseFn)(APerformanceHintSession*, bool, bool, const char*);
-static NotifyWorkloadIncreaseFn g_notifyWorkloadIncrease = nullptr;
-static APerformanceHintSession* g_hintSession = nullptr;
+typedef AWorkDuration* (*WorkDurationCreateFn)();
+typedef void (*WorkDurationReleaseFn)(AWorkDuration*);
+typedef void (*WorkDurationSetFn)(AWorkDuration*, int64_t);
+typedef int (*ReportWorkDuration2Fn)(APerformanceHintSession*, AWorkDuration*);
 
-static void announceGpuLoad() {
-    if (!g_notifyWorkloadIncrease) {
-        void* lib = dlopen("libandroid.so", RTLD_NOW);
-        if (!lib) return;
-        g_notifyWorkloadIncrease = (NotifyWorkloadIncreaseFn)dlsym(lib, "APerformanceHint_notifyWorkloadIncrease");
-        if (!g_notifyWorkloadIncrease) return;
-    }
-    if (!g_hintSession) {
+/**
+ * Hint session 必须与当前 native benchmark 线程同寿命。Kotlin 使用
+ * Dispatchers.Default，全局复用 session 会使后续测试绑到已经不执行的 TID。
+ */
+class PerformanceHintScope {
+public:
+    explicit PerformanceHintScope(int64_t targetNs) {
         APerformanceHintManager* mgr = APerformanceHint_getManager();
         if (!mgr) return;
-        static pid_t tid = (pid_t)syscall(SYS_gettid);
-        g_hintSession = APerformanceHint_createSession(mgr, &tid, 1, 30000000LL);
+        int32_t tid = (int32_t)syscall(SYS_gettid);
+        session_ = APerformanceHint_createSession(mgr, &tid, 1, targetNs);
+        if (!session_) return;
+
+        libandroid_ = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
+        if (libandroid_) {
+            notifyIncrease_ = reinterpret_cast<NotifyWorkloadIncreaseFn>(
+                dlsym(libandroid_, "APerformanceHint_notifyWorkloadIncrease"));
+            workDurationCreate_ = reinterpret_cast<WorkDurationCreateFn>(
+                dlsym(libandroid_, "AWorkDuration_create"));
+            workDurationRelease_ = reinterpret_cast<WorkDurationReleaseFn>(
+                dlsym(libandroid_, "AWorkDuration_release"));
+            setWorkStart_ = reinterpret_cast<WorkDurationSetFn>(
+                dlsym(libandroid_, "AWorkDuration_setWorkPeriodStartTimestampNanos"));
+            setActualTotal_ = reinterpret_cast<WorkDurationSetFn>(
+                dlsym(libandroid_, "AWorkDuration_setActualTotalDurationNanos"));
+            setActualCpu_ = reinterpret_cast<WorkDurationSetFn>(
+                dlsym(libandroid_, "AWorkDuration_setActualCpuDurationNanos"));
+            setActualGpu_ = reinterpret_cast<WorkDurationSetFn>(
+                dlsym(libandroid_, "AWorkDuration_setActualGpuDurationNanos"));
+            reportDuration2_ = reinterpret_cast<ReportWorkDuration2Fn>(
+                dlsym(libandroid_, "APerformanceHint_reportActualWorkDuration2"));
+        }
     }
-    if (g_hintSession) {
-        g_notifyWorkloadIncrease(g_hintSession, false, true, "sv_gpu_benchmark");
+
+    ~PerformanceHintScope() {
+        if (session_) APerformanceHint_closeSession(session_);
+        if (libandroid_) dlclose(libandroid_);
     }
-}
+
+    PerformanceHintScope(const PerformanceHintScope&) = delete;
+    PerformanceHintScope& operator=(const PerformanceHintScope&) = delete;
+
+    void announceIncrease() {
+        if (session_ && notifyIncrease_) {
+            notifyResult_ = notifyIncrease_(session_, false, true, "sv_gpu_compute_prime");
+        }
+    }
+
+    void updateTarget(int64_t targetNs) {
+        if (session_ && targetNs > 0) {
+            updateResult_ = APerformanceHint_updateTargetWorkDuration(session_, targetNs);
+        }
+    }
+
+    void report(uint64_t actualNs, uint64_t gpuNs = 0, uint64_t cpuNs = 0) {
+        if (!session_ || actualNs == 0) return;
+        int rc;
+        if (workDurationCreate_ && workDurationRelease_ && setWorkStart_ &&
+            setActualTotal_ && setActualCpu_ && setActualGpu_ && reportDuration2_) {
+            AWorkDuration* work = workDurationCreate_();
+            const uint64_t safeGpuNs = std::min(gpuNs > 0 ? gpuNs : actualNs, actualNs);
+            const uint64_t safeCpuNs = std::min(cpuNs, actualNs);
+            const uint64_t nowNs = monotonic_nanos();
+            setWorkStart_(work, (int64_t)(nowNs > actualNs ? nowNs - actualNs : 1));
+            setActualTotal_(work, (int64_t)actualNs);
+            setActualCpu_(work, (int64_t)safeCpuNs);
+            setActualGpu_(work, (int64_t)safeGpuNs);
+            rc = reportDuration2_(session_, work);
+            workDurationRelease_(work);
+            if (rc == 0) report2Count_++;
+        } else {
+            rc = APerformanceHint_reportActualWorkDuration(session_, (int64_t)actualNs);
+        }
+        if (rc == 0) reportCount_++;
+        else reportError_ = rc;
+    }
+
+    bool active() const { return session_ != nullptr; }
+    int notifyResult() const { return notifyResult_; }
+    int updateResult() const { return updateResult_; }
+    int reportCount() const { return reportCount_; }
+    int report2Count() const { return report2Count_; }
+    int reportError() const { return reportError_; }
+
+private:
+    void* libandroid_ = nullptr;
+    NotifyWorkloadIncreaseFn notifyIncrease_ = nullptr;
+    WorkDurationCreateFn workDurationCreate_ = nullptr;
+    WorkDurationReleaseFn workDurationRelease_ = nullptr;
+    WorkDurationSetFn setWorkStart_ = nullptr;
+    WorkDurationSetFn setActualTotal_ = nullptr;
+    WorkDurationSetFn setActualCpu_ = nullptr;
+    WorkDurationSetFn setActualGpu_ = nullptr;
+    ReportWorkDuration2Fn reportDuration2_ = nullptr;
+    APerformanceHintSession* session_ = nullptr;
+    int notifyResult_ = -1;
+    int updateResult_ = -1;
+    int reportCount_ = 0;
+    int report2Count_ = 0;
+    int reportError_ = 0;
+};
 
 static uint64_t monotonic_nanos() {
     timespec ts;
@@ -134,6 +221,8 @@ struct RoundTimings {
     uint64_t gpuExecNs = 0;          // Vulkan timestamp (diagnostic only)
     uint64_t completionWaitNs = 0;   // 旧: submit 返回后等待时长 (弃用)
     uint64_t submitToFenceNs = 0;    // 正式计时: submit 前 -> fence 完成
+    VkResult submitResult = VK_SUCCESS;
+    VkResult waitResult = VK_SUCCESS;
 };
 
 struct Harness {
@@ -147,6 +236,9 @@ struct Harness {
     uint32_t tsValidBits = 0;
     float tsPeriod = 1.0f;
     bool ok = false;
+    // fence 超时后 command buffer 仍可能被驱动使用。此时不能 reset/free/destroy
+    // 任何关联 Vulkan 对象；让进程回收它们比触发未定义行为更安全。
+    bool abandoned = false;
     std::string err;
 
     bool init() {
@@ -192,10 +284,11 @@ struct Harness {
         vkGetPhysicalDeviceQueueFamilyProperties(phys, &qfc, qfp.data());
         int found = -1;
         for (uint32_t i = 0; i < qfc; i++) {
-            if (qfp[i].queueFlags & VK_QUEUE_COMPUTE_BIT) { found = (int)i; tsValidBits = qfp[i].timestampValidBits; break; }
+            if (qfp[i].queueFlags & VK_QUEUE_COMPUTE_BIT) { found = (int)i; break; }
         }
         if (found < 0) { err = "no compute queue"; return false; }
         qf = (uint32_t)found;
+        tsValidBits = qfp[qf].timestampValidBits;
         float prio = 1.0f;
         VkDeviceQueueCreateInfo dqc{};
         dqc.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -217,6 +310,7 @@ struct Harness {
     }
 
     ~Harness() {
+        if (abandoned) return;
         if (cmdPool) vkDestroyCommandPool(device, cmdPool, nullptr);
         if (device) vkDestroyDevice(device, nullptr);
         if (instance) vkDestroyInstance(instance, nullptr);
@@ -226,7 +320,9 @@ struct Harness {
 
     RoundTimings runRound(VkPipeline pipeline, VkPipelineLayout layout, VkDescriptorSet descSet,
                           const void* pcData, uint32_t pcSize, uint32_t groups,
-                          VkQueryPool queryPool, VkFence fence, bool useGpuTs) {
+                          VkQueryPool queryPool, VkFence fence, bool useGpuTs,
+                          uint32_t dispatchRepeats = 1,
+                          uint64_t fenceTimeoutNs = 2000000000ULL) {
         RoundTimings t;
         VkCommandBuffer cmd = VK_NULL_HANDLE;
         VkCommandBufferAllocateInfo ai{};
@@ -246,8 +342,25 @@ struct Harness {
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, layout, 0, 1, &descSet, 0, nullptr);
             if (pcSize > 0) vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, pcSize, pcData);
-            // K=1: 单次 dispatch, 无跨 dispatch 状态/同步问题
-            vkCmdDispatch(cmd, groups, 1, 1);
+            // 多个中等 dispatch 连续填满 GPU。同一 storage buffer 跨 dispatch 读写，
+            // 显式 barrier 避免 RAW/WAW hazard；时间戳包围整个 compute quantum。
+            for (uint32_t repeat = 0; repeat < dispatchRepeats; repeat++) {
+                vkCmdDispatch(cmd, groups, 1, 1);
+                if (repeat + 1 < dispatchRepeats) {
+                    VkMemoryBarrier barrier{};
+                    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+                    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+                    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                    vkCmdPipelineBarrier(
+                        cmd,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        0,
+                        1, &barrier,
+                        0, nullptr,
+                        0, nullptr);
+                }
+            }
             if (useGpuTs) vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPool, 1);
             vkEndCommandBuffer(cmd);
         }
@@ -259,18 +372,24 @@ struct Harness {
         // 正式计时起点: submit 之前 (GPU 可能在 submit 内即开始执行)
         uint64_t wall0 = monotonic_nanos();
         VkResult sr = vkQueueSubmit(queue, 1, &si, fence);
+        t.submitResult = sr;
         uint64_t sub0 = monotonic_nanos();
         t.queueSubmitNs = sub0 - wall0;
 
         uint64_t wait0 = monotonic_nanos();
         VkResult wr = VK_ERROR_UNKNOWN;
         if (sr == VK_SUCCESS) {
-            wr = vkWaitForFences(device, 1, &fence, VK_TRUE, 5ULL * 1000000000ULL);
+            wr = vkWaitForFences(device, 1, &fence, VK_TRUE, fenceTimeoutNs);
         }
+        t.waitResult = wr;
         uint64_t wall1 = monotonic_nanos();
-        vkResetFences(device, 1, &fence);
         if (sr == VK_SUCCESS && wr == VK_SUCCESS) {
             t.submitToFenceNs = wall1 - wall0;
+            vkResetFences(device, 1, &fence);
+        } else if (sr == VK_SUCCESS) {
+            // VK_TIMEOUT 并不取消已提交的 GPU 工作。reset fence、free command
+            // buffer 或销毁其资源都会违反 Vulkan 生命周期规则。
+            abandoned = true;
         }
         t.completionWaitNs = (sr == VK_SUCCESS) ? wall1 - wait0 : 0;
         if (wr == VK_SUCCESS && useGpuTs) {
@@ -283,7 +402,7 @@ struct Harness {
                     t.gpuExecNs = (uint64_t)((double)diff * (double)tsPeriod);
                 }
             }
-        vkFreeCommandBuffers(device, cmdPool, 1, &cmd);
+        if (!abandoned) vkFreeCommandBuffers(device, cmdPool, 1, &cmd);
         return t;
     }
 
@@ -358,6 +477,7 @@ struct WorkResult {
     std::string arithContract;
     bool retestNeeded = false;
     std::string diag;
+    std::vector<uint64_t> sampleNs;
 };
 
 static std::string vkVersionStr(uint32_t v) {
@@ -411,10 +531,19 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
                                     : fnv1a64(fp32_spv, fp32_spv_len));
 
     const uint32_t WG = 64;
-    const uint32_t vec4Count = 16384;
+    // 4 MiB working set / 4096 workgroups: 较旧版 256 workgroups 更容易填满高端 GPU。
+    const uint32_t vec4Count = 262144;
     const uint32_t groups = vec4Count / WG;
     const VkDeviceSize bufBytes = (VkDeviceSize)vec4Count * 4 * sizeof(float);
     const uint32_t fmaPerIter = independent ? 16 : 4;
+    // 真机验证表明 4/8 dispatch 的 ~20ms batch 仍会在 submit 空隙掉回低档；
+    // 64 dispatch 组成约 200ms 连续 queue-busy 区间，不需要图形 Surface 也能施加稳定压力。
+    const uint32_t primeDispatches = 64;
+    const uint32_t probeIters = 128;
+    const uint32_t minIters = 16;
+    const uint32_t maxIters = 10000000;
+    const uint64_t primeQuantumTargetNs = 200000000ull;
+    const uint64_t primeDurationTargetNs = 3000000000ull;
 
     Buffer io{};
     if (!createBuffer(h.device, h.phys, bufBytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, io)) {
@@ -458,215 +587,169 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
         r.invalidReason = "fence"; g.destroy(h.device); destroyBuffer(h.device, io); return r;
     }
 
+    auto abortPendingGpuWork = [&](const char* phase) {
+        r.invalidReason = std::string("gpu fence timeout during compute ") + phase;
+        r.retestNeeded = true;
+        r.checksumValid = false;
+        return r;
+    };
+
     bool useGpuTs = h.gpuTimestampUsable();
 
-    // GPU workload 宣告 (Android 16 ADPF: 提前告知 GPU 负载将显著增加)
-    announceGpuLoad();
-
-    // ==== GPU PRIME (最长 16 轮, 每轮动态校准保持 ~200ms 持续负载) ====
-    // probe: 1024 测时, 放大到 ~200ms/轮
-    pcData.iterations = 1024;
-    RoundTimings probe = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+    // ==== PROBE: 仅此一次根据当前速度缩放工作量 ====
+    pcData.iterations = probeIters;
+    RoundTimings probe = h.runRound(
+        g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups,
+        g.queryPool, g.fence, useGpuTs, primeDispatches);
+    if (h.abandoned) return abortPendingGpuWork("probe");
     uint64_t probeNs = probe.submitToFenceNs;
-    uint32_t boostIters = 1024;
+    uint32_t primeIters = probeIters;
     if (probeNs > 0) {
-        boostIters = (uint32_t)((double)1024.0 * 200000000.0 / (double)probeNs);
-        if (boostIters < 1024) boostIters = 1024;
-        if (boostIters > 100000000u) boostIters = 100000000u;
+        double scale = (double)primeQuantumTargetNs / (double)probeNs;
+        scale = std::clamp(scale, 0.10, 64.0);
+        primeIters = (uint32_t)std::llround((double)probeIters * scale);
+        primeIters = std::clamp(primeIters, minIters, maxIters);
     }
+    pcData.iterations = primeIters;
+
+    // ==== PRIME: 固定工作量、连续 compute batch、持续 3s ====
+    // 调频后周期应自然缩短；不再动态改 iterations 把 P-state 变化隐藏掉。
+    PerformanceHintScope hint((int64_t)(primeQuantumTargetNs / 2));
+    hint.announceIncrease();
+    hint.updateTarget((int64_t)(primeQuantumTargetNs / 2));
+
     std::vector<uint64_t> primeNs;
-    std::vector<uint64_t> primeWin;
-    uint32_t primeIters = boostIters;
-    for (int i = 0; i < 16; i++) {
-        pcData.iterations = primeIters;
-        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-        if (t.submitToFenceNs > 0) {
-            primeNs.push_back(t.submitToFenceNs);
-            primeWin.push_back(t.submitToFenceNs);
-            if (primeWin.size() > 3) primeWin.erase(primeWin.begin());
-            // 动态校准: 保持每轮 ~200ms 持续负载 (GPU 升频后轮长会缩短)
-            primeIters = (uint32_t)((double)primeIters * 200000000.0 / (double)t.submitToFenceNs);
-            if (primeIters < 1024) primeIters = 1024;
-            if (primeIters > 100000000u) primeIters = 100000000u;
-            if (i >= 5 && primeWin.size() == 3) {
-                // 时间 CV < 5% -> GPU 平台稳定 (升频完成), 提前进入校准
-                std::vector<double> dv;
-                for (auto v : primeWin) dv.push_back((double)v);
-                if (robustCv(dv) < 0.05) break;
-            }
+    std::vector<double> primeGflops;
+    const double primeFlop = (double)vec4Count * primeIters * fmaPerIter * 2.0 * primeDispatches;
+    uint64_t primeStartNs = monotonic_nanos();
+    uint32_t primeAttempts = 0;
+    while ((monotonic_nanos() - primeStartNs < primeDurationTargetNs || primeNs.size() < 15) &&
+           primeAttempts++ < 80) {
+        RoundTimings t = h.runRound(
+            g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups,
+            g.queryPool, g.fence, useGpuTs, primeDispatches);
+        if (h.abandoned) return abortPendingGpuWork("prime");
+        if (t.submitToFenceNs == 0) continue;
+        primeNs.push_back(t.submitToFenceNs);
+        primeGflops.push_back(primeFlop / (double)t.submitToFenceNs);
+        hint.report(t.submitToFenceNs,
+                    t.gpuExecNs > 0 ? t.gpuExecNs : t.completionWaitNs,
+                    t.commandRecordingNs + t.queueSubmitNs);
+    }
+    auto sliceMedian = [](const std::vector<double>& values, size_t begin, size_t end) {
+        if (begin >= end || end > values.size()) return 0.0;
+        return medianD(std::vector<double>(values.begin() + begin, values.begin() + end));
+    };
+    const size_t platformWindow = std::min<size_t>(20, primeGflops.size());
+    double primeFirstGflops = platformWindow > 0
+        ? sliceMedian(primeGflops, 0, platformWindow) : 0.0;
+    double primeFinalGflops = platformWindow > 0
+        ? sliceMedian(primeGflops, primeGflops.size() - platformWindow, primeGflops.size()) : 0.0;
+    uint64_t primeFinalNs = platformWindow > 0
+        ? medianU64(std::vector<uint64_t>(primeNs.end() - platformWindow, primeNs.end())) : 0;
+    double primePeakGflops = 0.0;
+    for (size_t begin = 0; begin < primeGflops.size(); begin += 10) {
+        size_t end = std::min(begin + 10, primeGflops.size());
+        if (end - begin >= 5) {
+            primePeakGflops = std::max(primePeakGflops, sliceMedian(primeGflops, begin, end));
         }
     }
-    boostIters = primeIters;
-    uint64_t primeMedianNs = primeNs.empty() ? 0 : medianU64(primeNs);
+    std::vector<double> primeTail;
+    if (platformWindow > 0) {
+        primeTail.assign(primeGflops.end() - platformWindow, primeGflops.end());
+    }
+    double primeTailCv = robustCv(primeTail);
 
-    // ==== CALIBRATION (逐级, host submit-to-fence; 每级放大 clamp 1.5~8x) ====
-    // L1: 1024 -> 目标 30ms (若 <20ms 才放大, 每级最多 x8)
-    uint32_t iters = 1024;
-    pcData.iterations = iters;
-    RoundTimings calib0 = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-    uint64_t calibNs = calib0.submitToFenceNs;
-    uint64_t calibItersL1 = iters;
-    if (calibNs > 0 && calibNs < 20000000ull) {   // < 20ms 才放大
-        double scale = 30000000.0 / (double)calibNs;   // 目标 30ms
-        scale = std::clamp(scale, 1.5, 8.0);
-        iters = (uint32_t)((double)iters * scale);
-        if (iters > 100000000u) iters = 100000000u;
-        pcData.iterations = iters;
-        RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-        if (m.submitToFenceNs > 0) calibNs = m.submitToFenceNs;
+    // ==== MEASURE: 保持同一 iterations，只增加 dispatch 数组成 ~targetMs 正式轮 ====
+    uint64_t targetNs = (uint64_t)std::max(targetMs, 50) * 1000000ull;
+    uint32_t measureDispatches = primeDispatches;
+    if (primeFinalNs > 0) {
+        double scaled = (double)primeDispatches * (double)targetNs / (double)primeFinalNs;
+        measureDispatches = (uint32_t)std::llround(scaled);
+        measureDispatches = std::clamp(measureDispatches, primeDispatches, 256u);
     }
-    // L2: 3 轮 median -> ~targetMs (单轮校准会被 GPU 唤醒状态波动污染)
-    if (calibNs > 0) {
-        uint64_t target = (uint64_t)targetMs * 1000000ull;
-        iters = (uint32_t)((double)iters * (double)target / (double)calibNs);
-        if (iters < 1024) iters = 1024;
-        if (iters > 100000000u) iters = 100000000u;
-        pcData.iterations = iters;
-        std::vector<uint64_t> l2ns;
-        for (int i = 0; i < 3; i++) {
-            RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-            if (m.submitToFenceNs > 0) l2ns.push_back(m.submitToFenceNs);
-        }
-        if (!l2ns.empty()) {
-            uint64_t l2med = medianU64(l2ns);
-            iters = (uint32_t)((double)iters * (double)target / (double)l2med);
-            if (iters < 1024) iters = 1024;
-            if (iters > 100000000u) iters = 100000000u;
-        }
-    }
-    // 验证轮: 确认单轮 ~300ms, 偏差 >50% 再缩放一次 (防过度放大/缩小)
-    pcData.iterations = iters;
-    RoundTimings verify = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-    if (verify.submitToFenceNs > 0) {
-        uint64_t target = (uint64_t)targetMs * 1000000ull;
-        if (verify.submitToFenceNs < target / 2 || verify.submitToFenceNs > target * 2) {
-            iters = (uint32_t)((double)iters * (double)target / (double)verify.submitToFenceNs);
-            if (iters < 1024) iters = 1024;
-            if (iters > 100000000u) iters = 100000000u;
-            pcData.iterations = iters;
-        }
-    }
-    // LOGD("calib: L1Iters=%llu L1Ns=%llu finalIters=%u", (unsigned long long)calibItersL1, (unsigned long long)calibNs, iters);
+    const double measureFlop = (double)vec4Count * primeIters * fmaPerIter * 2.0 * measureDispatches;
 
-    // ==== MEASURE (settle 1 轮 + 7 轮, transition/双峰检测自动重来) ====
-    std::vector<uint64_t> gpuTimes, recTimes, subTimes, submitFenceTimes;
+    // settle 一轮，保持 queue 连续繁忙。
+    RoundTimings settle = h.runRound(
+        g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups,
+        g.queryPool, g.fence, useGpuTs, measureDispatches);
+    if (h.abandoned) return abortPendingGpuWork("settle");
+    hint.report(settle.submitToFenceNs,
+                settle.gpuExecNs > 0 ? settle.gpuExecNs : settle.completionWaitNs,
+                settle.commandRecordingNs + settle.queueSubmitNs);
+
+    std::vector<uint64_t> gpuTimes, recTimes, subTimes, waitTimes, submitFenceTimes;
     std::vector<double> mGflops;
+    // BenchmarkEngine 会消费 1 个 warmup，正式阶段最多请求 11 个样本。
+    for (int i = 0; i < 12; i++) {
+        RoundTimings t = h.runRound(
+            g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups,
+            g.queryPool, g.fence, useGpuTs, measureDispatches);
+        if (h.abandoned) return abortPendingGpuWork("measure");
+        if (t.submitToFenceNs == 0) continue;
+        gpuTimes.push_back(t.gpuExecNs);
+        recTimes.push_back(t.commandRecordingNs);
+        subTimes.push_back(t.queueSubmitNs);
+        waitTimes.push_back(t.completionWaitNs);
+        submitFenceTimes.push_back(t.submitToFenceNs);
+        mGflops.push_back(measureFlop / (double)t.submitToFenceNs);
+        hint.report(t.submitToFenceNs,
+                    t.gpuExecNs > 0 ? t.gpuExecNs : t.completionWaitNs,
+                    t.commandRecordingNs + t.queueSubmitNs);
+    }
+
+    // 高低平台混合、测量期才升频、或 prime 末端已掉频，均不输出正式分。
     bool transitionOrBimodal = false;
-
-    for (int attempt = 0; attempt < 2; attempt++) {
-        // settle
-        h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-        gpuTimes.clear(); recTimes.clear(); subTimes.clear(); submitFenceTimes.clear(); mGflops.clear();
-
-        for (int i = 0; i < 7; i++) {
-            RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-            gpuTimes.push_back(t.gpuExecNs);
-            recTimes.push_back(t.commandRecordingNs);
-            subTimes.push_back(t.queueSubmitNs);
-            submitFenceTimes.push_back(t.submitToFenceNs);
-            if (t.submitToFenceNs > 0) {
-                mGflops.push_back((double)vec4Count * iters * fmaPerIter * 2.0 / (double)t.submitToFenceNs);
-            }
-        }
-
-        // 迟到升频: 样本显著高于 prime 中位数换算的基线 -> P-state transition
-        transitionOrBimodal = false;
-        double primeBaselineGflops = (primeMedianNs > 0 && boostIters > 0)
-            ? (double)vec4Count * boostIters * fmaPerIter * 2.0 / (double)primeMedianNs : 0.0;
-        if (primeBaselineGflops > 0.0 && mGflops.size() >= 7) {
-            for (auto gf : mGflops) {
-                if (gf > primeBaselineGflops * 1.08) { transitionOrBimodal = true; break; }
-            }
-        }
-        // 双峰: 低 3 均值与高 3 均值差 > 12% (如 4.5/4.5/2.3/2.3/4.5/2.3/4.5)
-        if (!transitionOrBimodal && mGflops.size() >= 6) {
-            std::vector<double> sorted = mGflops;
-            std::sort(sorted.begin(), sorted.end());
-            double lo = (sorted[0] + sorted[1] + sorted[2]) / 3.0;
-            double hi = (sorted[sorted.size() - 3] + sorted[sorted.size() - 2] + sorted[sorted.size() - 1]) / 3.0;
-            double med = medianD(mGflops);
-            if (med > 0.0 && (hi - lo) / med > 0.12) transitionOrBimodal = true;
-        }
-
-        if (!transitionOrBimodal) break;
-        // 重新 prime -> 重新校准 -> measure (最多 1 次重来)
-        if (attempt == 0) {
-            primeNs.clear();
-            primeWin.clear();
-            for (int i = 0; i < 16; i++) {
-                pcData.iterations = boostIters;
-                RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-                if (t.submitToFenceNs > 0) {
-                    primeNs.push_back(t.submitToFenceNs);
-                    primeWin.push_back(t.submitToFenceNs);
-                    if (primeWin.size() > 3) primeWin.erase(primeWin.begin());
-                    if (i >= 5 && primeWin.size() == 3) {
-                        std::vector<double> dv;
-                        for (auto v : primeWin) dv.push_back((double)v);
-                        if (robustCv(dv) < 0.05) break;
-                    }
-                }
-            }
-            primeMedianNs = primeNs.empty() ? 0 : medianU64(primeNs);
-            // 逐级校准 (L1 + L2 + 验证轮)
-            iters = 1024;
-            pcData.iterations = iters;
-            RoundTimings c0 = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-            calibNs = c0.submitToFenceNs;
-            if (calibNs > 0 && calibNs < 20000000ull) {
-                double scale = 30000000.0 / (double)calibNs;
-                scale = std::clamp(scale, 1.5, 8.0);
-                iters = (uint32_t)((double)iters * scale);
-                if (iters > 100000000u) iters = 100000000u;
-                pcData.iterations = iters;
-                RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-                if (m.submitToFenceNs > 0) calibNs = m.submitToFenceNs;
-            }
-            if (calibNs > 0) {
-                uint64_t target = (uint64_t)targetMs * 1000000ull;
-                iters = (uint32_t)((double)iters * (double)target / (double)calibNs);
-                if (iters < 1024) iters = 1024;
-                if (iters > 100000000u) iters = 100000000u;
-                pcData.iterations = iters;
-                std::vector<uint64_t> l2ns;
-                for (int i = 0; i < 3; i++) {
-                    RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-                    if (m.submitToFenceNs > 0) l2ns.push_back(m.submitToFenceNs);
-                }
-                if (!l2ns.empty()) {
-                    uint64_t l2med = medianU64(l2ns);
-                    iters = (uint32_t)((double)iters * (double)target / (double)l2med);
-                    if (iters < 1024) iters = 1024;
-                    if (iters > 100000000u) iters = 100000000u;
-                }
-            }
-            pcData.iterations = iters;
-            RoundTimings verify = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-            if (verify.submitToFenceNs > 0) {
-                uint64_t target = (uint64_t)targetMs * 1000000ull;
-                if (verify.submitToFenceNs < target / 2 || verify.submitToFenceNs > target * 2) {
-                    iters = (uint32_t)((double)iters * (double)target / (double)verify.submitToFenceNs);
-                    if (iters < 1024) iters = 1024;
-                    if (iters > 100000000u) iters = 100000000u;
-                    pcData.iterations = iters;
-                }
+    if (primeTailCv > 0.05) transitionOrBimodal = true;
+    if (primePeakGflops > 0.0 && primeFinalGflops < primePeakGflops * 0.90) {
+        transitionOrBimodal = true;
+    }
+    if (primeFinalGflops > 0.0) {
+        for (double gf : mGflops) {
+            if (gf > primeFinalGflops * 1.08 || gf < primeFinalGflops * 0.88) {
+                transitionOrBimodal = true;
+                break;
             }
         }
     }
-    if (transitionOrBimodal) r.retestNeeded = true;
-    uint64_t measureMedianNs = submitFenceTimes.empty() ? 0 : medianU64(submitFenceTimes);
-    r.diag = "probeIters=1024 probeNs=" + std::to_string(probeNs) +
-             " primeIters=" + std::to_string(boostIters) + " primeRounds=8 primeMedianNs=" + std::to_string(primeMedianNs) +
-             " calibIters=" + std::to_string(calibItersL1) + " calibNs=" + std::to_string(calibNs) +
-             " finalIters=" + std::to_string(iters) + " targetNs=" + std::to_string((uint64_t)targetMs * 1000000ull) +
-             " measureMedianNs=" + std::to_string(measureMedianNs);
+    if (mGflops.size() >= 6) {
+        std::vector<double> sorted = mGflops;
+        std::sort(sorted.begin(), sorted.end());
+        double lo = (sorted[0] + sorted[1] + sorted[2]) / 3.0;
+        double hi = (sorted[sorted.size() - 3] + sorted[sorted.size() - 2] + sorted[sorted.size() - 1]) / 3.0;
+        double med = medianD(mGflops);
+        if (med > 0.0 && (hi - lo) / med > 0.12) transitionOrBimodal = true;
+    }
+    if (submitFenceTimes.size() < 12) transitionOrBimodal = true;
+    r.retestNeeded = transitionOrBimodal;
+
+    uint64_t measureMedianNs = medianU64(submitFenceTimes);
+    r.diag = "groups=" + std::to_string(groups) +
+             " primeDispatches=" + std::to_string(primeDispatches) +
+             " probeNs=" + std::to_string(probeNs) +
+             " primeIters=" + std::to_string(primeIters) +
+             " primeRounds=" + std::to_string(primeNs.size()) +
+             " primeFirst=" + std::to_string(primeFirstGflops) +
+             " primeFinal=" + std::to_string(primeFinalGflops) +
+             " primePeak=" + std::to_string(primePeakGflops) +
+             " primeTailCv=" + std::to_string(primeTailCv) +
+             " measureDispatches=" + std::to_string(measureDispatches) +
+             " measureMedianNs=" + std::to_string(measureMedianNs) +
+             " adpf=" + std::to_string(hint.active() ? 1 : 0) +
+             "," + std::to_string(hint.notifyResult()) +
+             "," + std::to_string(hint.updateResult()) +
+             "," + std::to_string(hint.reportCount()) +
+             "," + std::to_string(hint.report2Count()) +
+             "," + std::to_string(hint.reportError());
 
     // 正式成绩 = host submit-to-fence 中位数; gpuExecNs 保留 timestamp 作诊断
     r.medianNs = medianU64(submitFenceTimes);
     r.commandRecordingNs = medianU64(recTimes);
     r.queueSubmitNs = medianU64(subTimes);
     r.gpuExecNs = medianU64(gpuTimes);
-    r.completionWaitNs = medianU64(submitFenceTimes);
+    r.completionWaitNs = medianU64(waitTimes);
+    r.sampleNs = submitFenceTimes;
 
     {
         std::vector<double> d;
@@ -678,13 +761,9 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
         r.cv = (med > 0) ? m / med : 0.0;
     }
 
-    if (!useGpuTs) {
-        r.invalidReason = "GPU timestamp unsupported";
-    } else {
-        // metric 用 host 墙钟 (median wait 时长), 不依赖 GPU timestamp
-        double flop = (double)vec4Count * iters * fmaPerIter * 2.0;
-        if (r.medianNs > 0) r.metricValue = flop / (double)r.medianNs;
-    }
+    // 正式 metric 只依赖 host submit-to-fence 墙钟。GPU timestamp 缺失时仅少一项
+    // 诊断数据，不得让本来可测的 Compute workload 失效。
+    if (r.medianNs > 0) r.metricValue = measureFlop / (double)r.medianNs;
 
     vkMapMemory(h.device, io.mem, 0, bufBytes, 0, &mapped);
     f = (float*)mapped;
@@ -705,11 +784,23 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
 }
 
 static WorkResult runTriad(Harness& h, int targetMs) {
-    (void)targetMs;
     WorkResult r;
     fillBase(r, h);
     r.metricUnit = "GB/s";
     r.spirvHash = hex64(fnv1a64(buffer_triad_spv, buffer_triad_spv_len));
+
+    // 包含分配、预热和正式采样的绝对预算。正常运行约 4--6 秒；8 秒后
+    // 宁可返回可重试结果，也不能继续占用设备数十秒。
+    const uint64_t benchmarkStartNs = monotonic_nanos();
+    const uint64_t benchmarkDeadlineNs = benchmarkStartNs + 8000000000ULL;
+    auto beforeDeadline = [&]() { return monotonic_nanos() < benchmarkDeadlineNs; };
+    auto abortPendingGpuWork = [&](const char* reason) {
+        r.invalidReason = reason;
+        r.retestNeeded = true;
+        r.checksumValid = false;
+        r.diag = "elapsedNs=" + std::to_string(monotonic_nanos() - benchmarkStartNs);
+        return r;
+    };
 
     const uint32_t WG = 64;
     const uint32_t count = 16 * 1024 * 1024;
@@ -761,37 +852,139 @@ static WorkResult runTriad(Harness& h, int targetMs) {
     }
 
     bool useGpuTs = h.gpuTimestampUsable();
+    const uint64_t primeDurationTargetNs = 3000000000ull;
+    const double bytesPerDispatch = (double)count * 4.0 * 3.0;
 
-    std::vector<uint64_t> gpuTimes, recTimes, subTimes, waitTimes;
-    for (int i = 0; i < 3; i++) h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-    for (int i = 0; i < 7; i++) {
-        RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-        gpuTimes.push_back(t.gpuExecNs);
-        recTimes.push_back(t.commandRecordingNs);
-        subTimes.push_back(t.queueSubmitNs);
-        waitTimes.push_back(t.completionWaitNs);
+    // Buffer shader 的 barrier 成本在驱动间差异很大。先测单 dispatch，再把
+    // prime quantum 缩放到约 80ms，避免固定批量超过 fence timeout。
+    RoundTimings probe = h.runRound(
+        g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups,
+        g.queryPool, g.fence, useGpuTs, 1, 1000000000ULL);
+    if (h.abandoned) return abortPendingGpuWork("gpu fence timeout during buffer probe");
+    uint32_t primeDispatches = 1;
+    if (probe.submitToFenceNs > 0) {
+        primeDispatches = (uint32_t)std::llround(80000000.0 / (double)probe.submitToFenceNs);
+        primeDispatches = std::clamp(primeDispatches, 1u, 4u);
     }
-    r.medianNs = medianU64(gpuTimes);
+
+    PerformanceHintScope hint(80000000);
+    hint.announceIncrease();
+    hint.updateTarget(80000000);
+
+    std::vector<uint64_t> primeTimes;
+    std::vector<double> primeGbps;
+    const uint64_t primeStart = monotonic_nanos();
+    const uint64_t primeDeadline = std::min<uint64_t>(
+        benchmarkDeadlineNs, primeStart + (uint64_t)4000000000ULL);
+    uint32_t attempts = 0;
+    while ((monotonic_nanos() - primeStart < primeDurationTargetNs || primeTimes.size() < 8) &&
+           monotonic_nanos() < primeDeadline && attempts++ < 128) {
+        RoundTimings t = h.runRound(
+            g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups,
+            g.queryPool, g.fence, useGpuTs, primeDispatches, 1000000000ULL);
+        if (h.abandoned) return abortPendingGpuWork("gpu fence timeout during buffer prime");
+        if (t.submitToFenceNs == 0) continue;
+        primeTimes.push_back(t.submitToFenceNs);
+        primeGbps.push_back(bytesPerDispatch * primeDispatches / (double)t.submitToFenceNs);
+        hint.report(t.submitToFenceNs,
+                    t.gpuExecNs > 0 ? t.gpuExecNs : t.completionWaitNs,
+                    t.commandRecordingNs + t.queueSubmitNs);
+    }
+
+    const size_t window = std::min<size_t>(20, primeGbps.size());
+    std::vector<double> primeTail;
+    if (window > 0) primeTail.assign(primeGbps.end() - window, primeGbps.end());
+    const double primeFinal = medianD(primeTail);
+    const double primeTailCv = robustCv(primeTail);
+    double primePeak = 0.0;
+    for (size_t begin = 0; begin < primeGbps.size(); begin += 10) {
+        const size_t end = std::min(begin + 10, primeGbps.size());
+        if (end - begin >= 5) {
+            primePeak = std::max(primePeak, medianD(std::vector<double>(primeGbps.begin() + begin, primeGbps.begin() + end)));
+        }
+    }
+
+    const uint64_t primeMedianNs = window > 0
+        ? medianU64(std::vector<uint64_t>(primeTimes.end() - window, primeTimes.end())) : 0;
+    const uint64_t targetNs = (uint64_t)std::max(targetMs, 50) * 1000000ull;
+    uint32_t batchesPerSample = 1;
+    if (primeMedianNs > 0) {
+        batchesPerSample = (uint32_t)std::llround((double)targetNs / (double)primeMedianNs);
+        batchesPerSample = std::clamp(batchesPerSample, 1u, 64u);
+    }
+    const double measureBytes = bytesPerDispatch * primeDispatches * batchesPerSample;
+
+    RoundTimings settle = h.runRound(
+        g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups,
+        g.queryPool, g.fence, useGpuTs, primeDispatches, 1000000000ULL);
+    if (h.abandoned) return abortPendingGpuWork("gpu fence timeout during buffer settle");
+    hint.report(settle.submitToFenceNs,
+                settle.gpuExecNs > 0 ? settle.gpuExecNs : settle.completionWaitNs,
+                settle.commandRecordingNs + settle.queueSubmitNs);
+
+    std::vector<uint64_t> gpuTimes, recTimes, subTimes, waitTimes, submitFenceTimes;
+    std::vector<double> measuredGbps;
+    // BenchmarkEngine 会消费 1 个 warmup，正式阶段最多请求 11 个样本。
+    for (int i = 0; i < 12; i++) {
+        if (!beforeDeadline()) break;
+        uint64_t gpuNs = 0, recNs = 0, submitNs = 0, waitNs = 0, wallNs = 0;
+        bool complete = true;
+        for (uint32_t batch = 0; batch < batchesPerSample; ++batch) {
+            if (!beforeDeadline()) { complete = false; break; }
+            RoundTimings t = h.runRound(
+                g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups,
+                g.queryPool, g.fence, useGpuTs, primeDispatches, 1000000000ULL);
+            if (h.abandoned) return abortPendingGpuWork("gpu fence timeout during buffer measure");
+            if (t.submitToFenceNs == 0) { complete = false; break; }
+            gpuNs += t.gpuExecNs;
+            recNs += t.commandRecordingNs;
+            submitNs += t.queueSubmitNs;
+            waitNs += t.completionWaitNs;
+            wallNs += t.submitToFenceNs;
+            hint.report(t.submitToFenceNs,
+                        t.gpuExecNs > 0 ? t.gpuExecNs : t.completionWaitNs,
+                        t.commandRecordingNs + t.queueSubmitNs);
+        }
+        if (!complete || wallNs == 0) continue;
+        gpuTimes.push_back(gpuNs);
+        recTimes.push_back(recNs);
+        subTimes.push_back(submitNs);
+        waitTimes.push_back(waitNs);
+        submitFenceTimes.push_back(wallNs);
+        measuredGbps.push_back(measureBytes / (double)wallNs);
+    }
+
+    bool unstable = submitFenceTimes.size() < 12 || primeTailCv > 0.07;
+    if (primePeak > 0.0 && primeFinal < primePeak * 0.88) unstable = true;
+    if (primeFinal > 0.0) {
+        for (double value : measuredGbps) {
+            if (value > primeFinal * 1.10 || value < primeFinal * 0.85) unstable = true;
+        }
+    }
+    r.retestNeeded = unstable;
+    if (submitFenceTimes.size() < 12) {
+        r.invalidReason = beforeDeadline() ? "incomplete buffer samples" : "buffer time budget exceeded";
+    }
+    r.medianNs = medianU64(submitFenceTimes);
     r.commandRecordingNs = medianU64(recTimes);
     r.queueSubmitNs = medianU64(subTimes);
-    r.gpuExecNs = r.medianNs;
+    r.gpuExecNs = medianU64(gpuTimes);
     r.completionWaitNs = medianU64(waitTimes);
-    {
-        std::vector<double> d;
-        for (auto v : gpuTimes) d.push_back((double)v);
-        double med = medianD(d);
-        std::vector<double> dev;
-        for (auto v : d) dev.push_back(std::fabs(v - med));
-        double mm = medianD(dev);
-        r.cv = (med > 0) ? mm / med : 0.0;
-    }
-
-    if (!useGpuTs) {
-        r.invalidReason = "GPU timestamp unsupported";
-    } else {
-        double bytes = (double)count * 4.0 * 3.0; // K=1, single dispatch
-        if (r.medianNs > 0) r.metricValue = bytes / (double)r.medianNs;
-    }
+    r.sampleNs = submitFenceTimes;
+    r.cv = robustCv(measuredGbps);
+    if (r.medianNs > 0) r.metricValue = measureBytes / (double)r.medianNs;
+    r.diag = "groups=" + std::to_string(groups) +
+             " primeDispatches=" + std::to_string(primeDispatches) +
+             " probeNs=" + std::to_string(probe.submitToFenceNs) +
+             " primeRounds=" + std::to_string(primeTimes.size()) +
+             " primeFinal=" + std::to_string(primeFinal) +
+             " primePeak=" + std::to_string(primePeak) +
+             " primeTailCv=" + std::to_string(primeTailCv) +
+             " batchesPerSample=" + std::to_string(batchesPerSample) +
+             " adpf=" + std::to_string(hint.active() ? 1 : 0) +
+             "," + std::to_string(hint.reportCount()) +
+             "," + std::to_string(hint.report2Count()) +
+             "," + std::to_string(hint.reportError());
 
     vkMapMemory(h.device, A.mem, 0, bufBytes, 0, &m); fa = (float*)m;
     vkMapMemory(h.device, B.mem, 0, bufBytes, 0, &m); fb = (float*)m;
@@ -810,13 +1003,6 @@ static WorkResult runTriad(Harness& h, int targetMs) {
     g.destroy(h.device);
     destroyBuffer(h.device, A); destroyBuffer(h.device, B); destroyBuffer(h.device, O);
     return r;
-}
-
-static Harness& harness() {
-    static Harness h;
-    static bool tried = false;
-    if (!tried) { tried = true; h.init(); }
-    return h;
 }
 
 static std::string u64s(uint64_t v) { return std::to_string(v); }
@@ -840,6 +1026,12 @@ static std::string resultToStr(const WorkResult& r) {
     s += "arithType="; s += r.arithType; s += ";";
     s += "arithContract="; s += r.arithContract; s += ";";
     s += "retest="; s += (r.retestNeeded ? "1" : "0"); s += ";";
+    s += "sampleNs=";
+    for (size_t i = 0; i < r.sampleNs.size(); ++i) {
+        if (i > 0) s += ",";
+        s += u64s(r.sampleNs[i]);
+    }
+    s += ";";
     s += "diag="; s += r.diag; s += ";";
     s += "invalidReason="; s += r.invalidReason;
     return s;
@@ -849,9 +1041,12 @@ static std::string resultToStr(const WorkResult& r) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_siliconverity_nativegpu_VulkanBench_nativeRunVulkanBenchmark(JNIEnv* env, jclass, jint workload, jint targetDurationMs) {
-    Harness& h = harness();
+    // 每次调用独占 instance/device/queue/command pool。部分移动 GPU 驱动在大量
+    // host-visible buffer workload 后复用长期 device 会卡在下一次提交；初始化开销
+    // 不进入任何正式计时区间，因此以生命周期隔离换取跨运行可靠性。
+    Harness h;
     WorkResult r;
-    if (!h.ok) {
+    if (!h.init()) {
         r.supported = false;
         r.invalidReason = h.err;
     } else if (workload == 2) {

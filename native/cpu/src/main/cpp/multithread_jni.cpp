@@ -63,7 +63,6 @@ Java_com_siliconverity_nativecpu_MultithreadWorkload_nativeThreadCount(JNIEnv*, 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_siliconverity_nativecpu_MultithreadWorkload_nativeCorrectnessCheck(JNIEnv*, jclass) {
     mt_work(42ull, 1000ull, 2);
-    uint64_t a = g_sink;
-    mt_work(42ull, 1000ull, 2);
-    return (a == g_sink) ? JNI_TRUE : JNI_FALSE;
+    constexpr uint64_t GOLDEN = 0x3538aa4d4feec7c8ull;
+    return g_sink == GOLDEN ? JNI_TRUE : JNI_FALSE;
 }

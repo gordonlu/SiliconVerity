@@ -23,6 +23,18 @@ class ScoringEngine(private val pack: ScorePack) {
         for ((workloadId, ref) in pack.flatWorkloads()) {
             val run = latest[workloadId]
             if (run == null) { exclusions += ScoreExclusion(workloadId, "no run"); continue }
+            val expectedVersion = pack.workloadVersions[workloadId]
+            if (expectedVersion == null) {
+                exclusions += ScoreExclusion(workloadId, "reference workload version not frozen")
+                continue
+            }
+            if (run.identity.workloadVersion != expectedVersion) {
+                exclusions += ScoreExclusion(
+                    workloadId,
+                    "workload version mismatch: measured=${run.identity.workloadVersion}, reference=$expectedVersion",
+                )
+                continue
+            }
             val refValue = pack.references[workloadId] ?: 0.0
             if (refValue <= 0.0) { exclusions += ScoreExclusion(workloadId, "reference not frozen"); continue }
             val measured = (run.payload as? BenchmarkPayload.Scalar)?.summary?.median
@@ -32,7 +44,8 @@ class ScoringEngine(private val pack: ScorePack) {
             val passed = run.correctness.passed
             val stability = run.validity.stability
             val eligible = passed && (stability == ValidityLevel.STABLE || stability == ValidityLevel.VARIABLE)
-            val ratio = (measured / refValue).coerceIn(pack.clampMin, pack.clampMax)
+            val rawRatio = if (ref.lowerIsBetter) refValue / measured else measured / refValue
+            val ratio = rawRatio.coerceIn(pack.clampMin, pack.clampMax)
             val normalized = pack.itemBase * ratio
             val reason = when {
                 !passed -> "correctness failed"
@@ -50,6 +63,7 @@ class ScoringEngine(private val pack: ScorePack) {
                 eligible = eligible,
                 exclusionReason = reason,
             )
+            if (!eligible && reason != null) exclusions += ScoreExclusion(workloadId, reason)
         }
 
         val categoryScores = mutableMapOf<String, Double>()
@@ -58,23 +72,25 @@ class ScoringEngine(private val pack: ScorePack) {
             val catScores = workloadScores.filter { it.workloadId in spec.workloads.keys }
             if (catScores.any { it.exclusionReason == "RETEST_RECOMMENDED" }) retestBlocked = true
             val eligible = catScores.filter { it.eligible }
-            if (eligible.isEmpty()) continue
+            // 分类缺项时不重归一化生成看似完整的分类分。
+            if (eligible.size != spec.workloads.size) continue
             val totalW = eligible.sumOf { spec.workloads.getValue(it.workloadId).weight }
             val geo = exp(eligible.sumOf { (spec.workloads.getValue(it.workloadId).weight / totalW) * ln(it.normalizedScore) })
             categoryScores[cat] = geo
         }
 
         val allPresent = pack.overallWeights.keys.all { categoryScores.containsKey(it) }
-        val overall = if (allPresent && !retestBlocked) {
+        val allWorkloadsEligible = workloadScores.count { it.eligible } == pack.flatWorkloads().size
+        val overall = if (allPresent && allWorkloadsEligible && !retestBlocked) {
             val geo = exp(categoryScores.entries.sumOf { (cat, s) -> pack.overallWeights.getValue(cat) * ln(s) })
             Math.round(geo * pack.multiplier).toInt()
         } else null
 
         val eligibleCount = workloadScores.count { it.eligible }
-        val total = workloadScores.size
+        val total = pack.flatWorkloads().size
         val hasVariable = workloadScores.any { it.eligible && it.exclusionReason == null && it.workloadId.let { id -> latest[id]?.validity?.stability == ValidityLevel.VARIABLE } }
         val confidence = when {
-            eligibleCount == 0 -> ScoreConfidence("LOW", 0, total)
+            eligibleCount != total -> ScoreConfidence("LOW", eligibleCount, total)
             hasVariable -> ScoreConfidence("MEDIUM", eligibleCount, total)
             else -> ScoreConfidence("HIGH", eligibleCount, total)
         }

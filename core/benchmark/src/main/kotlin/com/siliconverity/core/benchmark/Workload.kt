@@ -22,6 +22,10 @@ interface Workload {
     val stableCvThresholdOverride: Double?
         get() = null
 
+    /** 非评分诊断信息（例如 native 协议/驱动反馈），用于结果追溯。 */
+    val diagnostics: List<String>
+        get() = emptyList()
+
     /**
      * Calibration: 把工作量调整到接近 targetMillis/轮 (每 workload 自校准)。
      * 固定工作量的 workload (内存/存储/GPU) 可不覆写 (默认 no-op)。

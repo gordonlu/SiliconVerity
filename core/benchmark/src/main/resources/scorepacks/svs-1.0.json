@@ -87,6 +87,22 @@
     "storage.random_write.fsync": 62961276.46,
     "storage.seq_read.warm": 4980984054.39
   },
+  "workloadVersions": {
+    "cpu.int.ilp": "1.0.0",
+    "cpu.fp32.fma": "0.1.0-alpha",
+    "cpu.int.branch": "0.1.0-alpha",
+    "cpu.hash.cached": "0.1.0-alpha",
+    "cpu.multithread": "0.1.0-alpha",
+    "vulkan.fp32.independent": "0.1.0-alpha",
+    "vulkan.fp32.dependency": "0.1.0-alpha",
+    "vulkan.buffer.throughput": "0.1.0-alpha",
+    "mem.bandwidth.read": "0.1.0-alpha",
+    "mem.bandwidth.copy": "0.1.0-alpha",
+    "storage.seq_write.buffered": "0.1.0-alpha",
+    "storage.seq_write.durable": "1.0.0",
+    "storage.random_write.fsync": "1.0.0",
+    "storage.seq_read.warm": "0.1.0-alpha"
+  },
   "clampMin": 0.2,
   "clampMax": 5.0,
   "multiplier": 10.0,

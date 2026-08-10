@@ -3,6 +3,8 @@ package com.siliconverity.benchmark
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
+import android.os.PowerManager
 import com.siliconverity.core.benchmark.SustainedProgress
 import com.siliconverity.core.benchmark.SustainedRunner
 import com.siliconverity.core.benchmark.toBenchmarkRun
@@ -26,6 +28,20 @@ class SustainedController(application: Application) : AndroidViewModel(applicati
     val state: StateFlow<SustainedUiState> = _state.asStateFlow()
 
     private var job: Job? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+
+    private fun acquireWakeLock(durationSec: Int) {
+        val pm = getApplication<Application>().getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sv:sustained").apply {
+            setReferenceCounted(false)
+            acquire((durationSec + 60L) * 1000L)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
+        wakeLock = null
+    }
 
     fun start(durationSec: Int) {
         if (!BenchmarkRunCoordinator.tryAcquire()) {
@@ -35,6 +51,7 @@ class SustainedController(application: Application) : AndroidViewModel(applicati
         job?.cancel()
         job = viewModelScope.launch(Dispatchers.Default) {
             try {
+                acquireWakeLock(durationSec)
                 _state.value = SustainedUiState.Running(
                     SustainedProgress(0.0, durationSec, 0.0, env.thermalStatusStart, emptyList()),
                 )
@@ -53,6 +70,7 @@ class SustainedController(application: Application) : AndroidViewModel(applicati
                     onFailure = { SustainedUiState.Error(it.message ?: "unknown error") },
                 )
             } finally {
+                releaseWakeLock()
                 BenchmarkRunCoordinator.release()
             }
         }
@@ -60,6 +78,7 @@ class SustainedController(application: Application) : AndroidViewModel(applicati
 
     fun stop() {
         job?.cancel()
+        releaseWakeLock()
         _state.value = SustainedUiState.Idle
     }
 

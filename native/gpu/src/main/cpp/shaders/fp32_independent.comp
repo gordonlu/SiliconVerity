@@ -30,7 +30,9 @@ void main() {
         c = c * pc.factorC + pc.offsetC;
         d = d * pc.factorD + pc.offsetD;
     }
-    vec4 sum = a + b + c + d;
+    // 跨 dispatch 作为下一轮输入时保持数值尺度；直接求和会每轮约 x4，
+    // 多 dispatch saturation 协议下会快速溢出。该循环外归一化开销不计入 FMA FLOP。
+    vec4 sum = (a + b + c + d) * 0.25;
     data[i]      = sum.x;
     data[i + 1u] = sum.y;
     data[i + 2u] = sum.z;

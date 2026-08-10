@@ -9,6 +9,8 @@ import com.siliconverity.nativecpu.IntBranchWorkload
 import com.siliconverity.nativecpu.MultithreadWorkload
 import com.siliconverity.nativegpu.GpuWorkload
 import com.siliconverity.nativegpu.VulkanBench
+import com.siliconverity.nativememory.MemoryCopyWorkload
+import com.siliconverity.nativememory.MemoryReadWorkload
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -22,9 +24,10 @@ import org.junit.runner.RunWith
 class BenchmarkCorrectnessTest {
 
     private fun assertCpuCorrectness(w: Workload) {
+        w.calibrate(100)
         w.warmUp()
         val id = w.spec.workloadId
-        assertTrue("$id correctness", w.correctnessCheck())
+        assertTrue("$id correctness", w.correctnessCheck().passed)
         val s = w.runOnce()
         assertTrue("$id positive duration", s.durationNanos > 0)
         assertTrue("$id positive throughput", s.throughput > 0)
@@ -45,18 +48,27 @@ class BenchmarkCorrectnessTest {
     @Test
     fun cpuMultithread() = assertCpuCorrectness(MultithreadWorkload())
 
+    @Test
+    fun memoryReadMeasuredBuffer() = assertCpuCorrectness(MemoryReadWorkload())
+
+    @Test
+    fun memoryCopyMeasuredBuffer() = assertCpuCorrectness(MemoryCopyWorkload())
+
     private fun assertGpuChecksum(wl: GpuWorkload) {
         val r = VulkanBench().run(wl, 200)
         assertTrue("$wl supported", r.supported)
         assertTrue("$wl checksum (catches overflow/NaN-style regressions)", r.checksumValid)
+        assertTrue("$wl metric", (r.metricValue ?: 0.0) > 0.0)
+        assertTrue("$wl native samples", r.sampleNanos.size == 12)
+    }
+
+    private fun runGpuSuite() {
+        assertGpuChecksum(GpuWorkload.FP32_INDEPENDENT)
+        assertGpuChecksum(GpuWorkload.FP32_DEPENDENCY)
+        assertGpuChecksum(GpuWorkload.BUFFER_THROUGHPUT)
     }
 
     @Test
-    fun gpuFp32IndependentChecksum() = assertGpuChecksum(GpuWorkload.FP32_INDEPENDENT)
+    fun gpuSuiteChecksum() = runGpuSuite()
 
-    @Test
-    fun gpuFp32DependencyChecksum() = assertGpuChecksum(GpuWorkload.FP32_DEPENDENCY)
-
-    @Test
-    fun gpuBufferThroughputChecksum() = assertGpuChecksum(GpuWorkload.BUFFER_THROUGHPUT)
 }

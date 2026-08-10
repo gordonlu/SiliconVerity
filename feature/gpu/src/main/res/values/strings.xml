@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="gpu_title">GPU 计算</string>
+    <string name="gpu_title">GPU 图形与计算</string>
     <string name="gpu_back">返回</string>
-    <string name="gpu_desc">Vulkan Compute MiniBench (无图形管线)。仅 Shader 吞吐与 Buffer 吞吐，不等于完整图形性能。</string>
-    <string name="gpu_run_start">RUN GPU COMPUTE</string>
+    <string name="gpu_desc">真实 Vulkan Swapchain 先测程序化 3D Glow，再测 Compute 与 Buffer。Graphics 固定 1080p，以 GPU timestamp 计算场景吞吐，预热 2 秒、正式 10 秒。</string>
+    <string name="gpu_run_start">RUN GPU SUITE</string>
     <string name="gpu_run_measuring">MEASURING...</string>
     <string name="gpu_stop">STOP</string>
     <string name="gpu_not_run">尚未运行</string>
-    <string name="gpu_running_hint">FP32 Independent / Dependency-HEAVY / Buffer</string>
+    <string name="gpu_running_hint">3D GLOW / FP32 Independent / Dependency / Buffer</string>
+    <string name="gpu_game_mode">系统 Game Mode：%1$s</string>
     <string name="gpu_error">出错: %1$s</string>
+    <string name="gpu_card_graphics">PROCEDURAL 3D GLOW</string>
     <string name="gpu_card_independent">FP32 INDEPENDENT</string>
     <string name="gpu_card_dependency">FP32 依赖链吞吐</string>
     <string name="gpu_card_buffer">BUFFER THROUGHPUT</string>
@@ -17,6 +19,9 @@
     <string name="gpu_driver_line">driver %1$s  •  Vulkan %2$s</string>
     <string name="gpu_arith_line">arith %1$s / %2$s</string>
     <string name="gpu_metric_value">%1$.2f %2$s</string>
+    <string name="gpu_graphics_detail">%1$d 次 Present / %2$.2f 秒  •  %3$.2f FPS  •  %4$d×%5$d  •  %6$s</string>
+    <string name="gpu_graphics_frame_time">标准场景 GPU P50 %1$.2f ms  •  Present 间隔 P95 %2$.2f ms</string>
+    <string name="gpu_graphics_batch">每次 Present %1$d 轮标准场景  •  共 %2$d 轮</string>
     <string name="gpu_cv_line">CV %1$.4f  •  GPU exec %2$,d ns</string>
     <string name="gpu_submit_line">submit diag  rec %1$,d / submit %2$,d / wait %3$,d ns</string>
     <string name="gpu_checksum_ok">checksum OK</string>

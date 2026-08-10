@@ -94,6 +94,9 @@ fun BenchmarkRunDetailScreen(runId: String, onBack: () -> Unit) {
             item { Kv(stringResource(R.string.history_kv_abi), r.environment.abi) }
             item { Kv(stringResource(R.string.history_kv_battery), "${r.environment.batteryLevel}%  ${r.environment.chargingState}") }
             item { Kv(stringResource(R.string.history_kv_thermal), "${r.environment.thermalStatusStart} -> ${r.environment.thermalStatusEnd}") }
+            if (r.environment.gameMode.isNotEmpty()) {
+                item { Kv(stringResource(R.string.history_kv_game_mode), r.environment.gameMode) }
+            }
             item { SectionTitle(stringResource(R.string.history_sec_validity)) }
             item { Kv(stringResource(R.string.history_kv_level), validityLabel(r.validity.stability)) }
             item { Kv(stringResource(R.string.history_kv_robust_cv), "%.4f".format(r.validity.robustCv)) }

@@ -42,6 +42,7 @@
     <string name="history_kv_abi">ABI</string>
     <string name="history_kv_battery">battery</string>
     <string name="history_kv_thermal">thermal</string>
+    <string name="history_kv_game_mode">Game Mode</string>
     <string name="history_kv_level">level</string>
     <string name="history_kv_robust_cv">robustCv</string>
     <string name="history_kv_score_eligible">scoreEligible</string>

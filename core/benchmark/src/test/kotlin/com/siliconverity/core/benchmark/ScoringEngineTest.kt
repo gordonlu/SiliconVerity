@@ -18,6 +18,7 @@ class ScoringEngineTest {
         overallWeights = overallWeights,
         categories = categories,
         references = references,
+        workloadVersions = references.keys.associateWith { "1.0.0" },
     )
 
     private fun run(id: String, median: Double, stability: ValidityLevel = ValidityLevel.STABLE, passed: Boolean = true): BenchmarkRun {
@@ -94,8 +95,10 @@ class ScoringEngineTest {
         val runs = listOf(run("cpu.a", 100.0, passed = false), run("cpu.b", 200.0), run("gpu.x", 500.0))
         val report = ScoringEngine(cpuGpuPack).score(runs)
         assertTrue(report.workloadScores.first { it.workloadId == "cpu.a" }.let { !it.eligible && it.exclusionReason == "correctness failed" })
-        // cpu 只剩 cpu.b (weight renorm) -> cpuScore = 1000
-        assertEquals(1000, report.cpuScore)
+        assertNull("incomplete CPU category must not be scored", report.cpuScore)
+        assertNull("incomplete category blocks overall", report.overallScore)
+        assertEquals("LOW", report.confidence.level)
+        assertTrue(report.exclusions.any { it.workloadId == "cpu.a" && it.reason == "correctness failed" })
     }
 
     @Test
@@ -110,5 +113,29 @@ class ScoringEngineTest {
         val report = ScoringEngine(pack2).score(runs)
         assertEquals(5000, report.cpuScore)
         assertEquals(5000.0, report.workloadScores.first().normalizedScore, 0.001)
+    }
+
+    @Test
+    fun workloadVersionMismatchIsExcluded() {
+        val mismatched = run("cpu.a", 100.0).copy(
+            identity = run("cpu.a", 100.0).identity.copy(workloadVersion = "2.0.0"),
+        )
+        val report = ScoringEngine(cpuGpuPack).score(
+            listOf(mismatched, run("cpu.b", 200.0), run("gpu.x", 500.0)),
+        )
+        assertNull(report.cpuScore)
+        assertNull(report.overallScore)
+        assertTrue(report.exclusions.any { it.workloadId == "cpu.a" && it.reason.contains("version mismatch") })
+    }
+
+    @Test
+    fun lowerIsBetterUsesInverseRatio() {
+        val latencyPack = pack(
+            overallWeights = mapOf("CPU" to 1.0),
+            categories = mapOf("CPU" to CategorySpec(1.0, mapOf("cpu.latency" to WorkloadRef(1.0, lowerIsBetter = true)))),
+            references = mapOf("cpu.latency" to 100.0),
+        )
+        val report = ScoringEngine(latencyPack).score(listOf(run("cpu.latency", 50.0)))
+        assertEquals(2000, report.cpuScore)
     }
 }

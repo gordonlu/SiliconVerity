@@ -18,6 +18,8 @@ data class RunManifest(
     val arithmeticType: ArithmeticType? = null,
     val arithmeticContract: ArithmeticContract? = null,
     val startedAt: String = "",
+    val endedAt: String = "",
+    val actualDurationNanos: Long = 0L,
     val abi: String,
     val androidVersion: String,
     val securityPatch: String,
@@ -26,6 +28,7 @@ data class RunManifest(
     val batteryLevel: Int,
     val chargingState: String,
     val powerSaveMode: Boolean = false,
+    val gameMode: String = "",
     val thermalStatusStart: String,
     val thermalStatusEnd: String,
     val testOrder: List<String>,
@@ -44,5 +47,6 @@ data class RunManifest(
     val validityLevel: ValidityLevel,
     val checksumKind: ChecksumKind? = null,
     val thermalTimeline: List<ThermalSample> = emptyList(),
+    val diagnostics: List<String> = emptyList(),
     val warnings: List<String> = emptyList(),
 )

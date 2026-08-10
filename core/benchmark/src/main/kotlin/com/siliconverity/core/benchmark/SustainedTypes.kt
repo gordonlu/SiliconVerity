@@ -34,6 +34,8 @@ data class SustainedResult(
     val thermalStatusEnd: String,
     val batteryLevel: Int,
     val chargingState: String,
+    val actualDurationNanos: Long = 0L,
+    val correctness: CorrectnessResult = CorrectnessResult(passed = true, kind = ChecksumKind.EXACT),
 )
 
 data class SustainedProgress(

@@ -1,11 +1,15 @@
 package com.siliconverity.feature.gpu
 
+import android.view.Surface
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,11 +22,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.siliconverity.core.designsystem.SvColors
 import com.siliconverity.core.designsystem.SvPanel
 import com.siliconverity.core.designsystem.SvSpacing
@@ -34,6 +40,7 @@ fun GpuScreen(
     onRun: () -> Unit,
     onStop: () -> Unit,
     onBack: () -> Unit,
+    onSurfaceChanged: (Surface?) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
@@ -55,6 +62,26 @@ fun GpuScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+
+        item {
+            GraphicsSurface(onSurfaceChanged)
+        }
+
+        val gameMode = when (state) {
+            is GpuUiState.Idle -> state.gameMode
+            is GpuUiState.Running -> state.gameMode
+            is GpuUiState.Done -> state.gameMode
+        }
+        if (gameMode.isNotEmpty()) {
+            val gameModeEligible = gameMode == "STANDARD" || gameMode == "CUSTOM" || gameMode == "PERFORMANCE"
+            item {
+                Text(
+                    stringResource(R.string.gpu_game_mode, gameMode),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (gameModeEligible) SvColors.Accent else MaterialTheme.colorScheme.error,
+                )
+            }
         }
 
         val running = state is GpuUiState.Running
@@ -87,12 +114,40 @@ fun GpuScreen(
             }
             is GpuUiState.Done -> {
                 state.error?.let { item { Text(stringResource(R.string.gpu_error, it), color = MaterialTheme.colorScheme.error) } }
+                item { ResultCard(stringResource(R.string.gpu_card_graphics), state.graphics) }
                 item { ResultCard(stringResource(R.string.gpu_card_independent), state.independent) }
                 item { ResultCard(stringResource(R.string.gpu_card_dependency), state.dependency) }
                 item { ResultCard(stringResource(R.string.gpu_card_buffer), state.buffer) }
             }
         }
     }
+}
+
+@Composable
+private fun GraphicsSurface(onSurfaceChanged: (Surface?) -> Unit) {
+    val currentCallback = rememberUpdatedState(onSurfaceChanged)
+    AndroidView(
+        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+        factory = { context ->
+            SurfaceView(context).apply {
+                keepScreenOn = true
+                holder.setFixedSize(1920, 1080)
+                holder.addCallback(object : SurfaceHolder.Callback {
+                    override fun surfaceCreated(holder: SurfaceHolder) {
+                        currentCallback.value(holder.surface.takeIf { it.isValid })
+                    }
+
+                    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                        currentCallback.value(holder.surface.takeIf { it.isValid })
+                    }
+
+                    override fun surfaceDestroyed(holder: SurfaceHolder) {
+                        currentCallback.value(null)
+                    }
+                })
+            }
+        },
+    )
 }
 
 @Composable
@@ -135,6 +190,42 @@ private fun ResultCard(title: String, r: NativeGpuResult?) {
                 style = MaterialTheme.typography.headlineMedium,
                 fontFamily = FontFamily.Monospace,
             )
+            val totalFrames = r.totalFrames
+            if (totalFrames != null) {
+                Text(
+                    stringResource(
+                        R.string.gpu_graphics_detail,
+                        totalFrames,
+                        (r.elapsedNanos ?: 0L) / 1_000_000_000.0,
+                        r.presentedFps ?: 0.0,
+                        r.surfaceWidth ?: 0,
+                        r.surfaceHeight ?: 0,
+                        r.presentMode ?: "?",
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    stringResource(
+                        R.string.gpu_graphics_frame_time,
+                        (r.medianNs ?: 0L) / 1_000_000.0,
+                        (r.p95FrameNanos ?: 0L) / 1_000_000.0,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    stringResource(
+                        R.string.gpu_graphics_batch,
+                        r.workloadIterations ?: 1,
+                        r.measuredSceneIterations ?: totalFrames,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Text(
                 stringResource(R.string.gpu_cv_line, r.coefficientOfVariation ?: 0.0, r.gpuExecNs ?: 0L),
                 style = MaterialTheme.typography.bodySmall,

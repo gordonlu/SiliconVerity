@@ -48,7 +48,6 @@ Java_com_siliconverity_nativecpu_CompressionWorkload_nativeRunOnce(JNIEnv* env, 
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_siliconverity_nativecpu_CompressionWorkload_nativeCorrectnessCheck(JNIEnv*, jclass) {
-    uint64_t a = hash_loop(7ull, 5ull);
-    uint64_t b = hash_loop(7ull, 5ull);
-    return (a == b) ? JNI_TRUE : JNI_FALSE;
+    constexpr uint64_t GOLDEN = 0xd762cf2ead9c8a14ull;
+    return hash_loop(7ull, 5ull) == GOLDEN ? JNI_TRUE : JNI_FALSE;
 }

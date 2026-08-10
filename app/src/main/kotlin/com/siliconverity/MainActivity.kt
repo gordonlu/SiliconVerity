@@ -281,6 +281,7 @@ private fun AppShell() {
                     onRun = { gpuVm.run() },
                     onStop = { gpuVm.stop() },
                     onBack = { nav.popBackStack() },
+                    onSurfaceChanged = { gpuVm.setGraphicsSurface(it) },
                 )
             }
             composable("latency") {
