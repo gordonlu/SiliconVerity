@@ -1,14 +1,16 @@
 package com.siliconverity.core.designsystem
 
 import android.content.Context
+import com.siliconverity.core.benchmark.BenchmarkPayload
 import com.siliconverity.core.benchmark.BenchmarkRun
 import com.siliconverity.core.benchmark.payloadSummaryMedian
+import com.siliconverity.core.storage.BenchmarkRunStore
 import java.io.File
 
 /**
- * GPU 满载状态检测 (供结果页/会话聚合显示):
- * 1) sysfs 读 GPU 实际频率 (devfreq 多路径, 不可读返回 null)
- * 2) 与参考值比值判定: vulkan.fp32.independent < 0.75 视为疑似半速/节能
+ * GPU 满载状态检测 (设备自基线, 与参考包无关):
+ * 本次 independent 实测 vs 该设备历史 session-median 的中位数;
+ * < 0.75 视为疑似未满载 (节能/半速)。无历史基线时不判定。
  */
 object GpuStatusDetector {
 
@@ -28,18 +30,28 @@ object GpuStatusDetector {
         return null
     }
 
+    /** 设备历史基线: 该 workload 历史 median 的中位数 (排除本次会话)。 */
+    fun baseline(context: Context, workloadId: String, excludeSessionId: String): Double? {
+        val runs = runCatching { BenchmarkRunStore(context.filesDir).list() }.getOrDefault(emptyList())
+        val medians = runs
+            .filter { it.identity.workloadId == workloadId && it.identity.sessionId != excludeSessionId }
+            .mapNotNull { (it.payload as? BenchmarkPayload.Scalar)?.summary?.median }
+            .sorted()
+        if (medians.isEmpty()) return null
+        return medians[medians.size / 2]
+    }
+
     /**
-     * GPU 满载状态: "OK" / "LOW"(疑似未满载) / null(无 GPU 数据)。
-     * ratio = independent 实测/参考; < 0.75 视为半速。
+     * GPU 满载状态: "OK" / "LOW" / null(无 GPU 数据或无历史基线)。
      */
     fun status(context: Context, runs: List<BenchmarkRun>): String? {
-        val independent = runs.firstOrNull { it.identity.workloadId == "vulkan.fp32.independent" }
-            ?: return null
+        val independent = runs.firstOrNull { it.identity.workloadId == "vulkan.fp32.independent" } ?: return null
         val med = independent.payloadSummaryMedian()
-        val ref = SessionScorer.refValue(context, "vulkan.fp32.independent") ?: return null
-        if (med <= 0.0 || ref <= 0.0) return null
-        val ratio = med / ref
-        return if (ratio < 0.75) "LOW" else "OK"
+        if (med <= 0.0) return null
+        val sessionId = independent.identity.sessionId
+        val base = baseline(context, "vulkan.fp32.independent", sessionId) ?: return null
+        if (base <= 0.0) return null
+        return if (med / base < 0.75) "LOW" else "OK"
     }
 
     /** 展示文案: 频率 + 状态。 */

@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -48,6 +49,12 @@ fun SessionScreen(
     state: BenchmarkUiState.Running,
     onStop: () -> Unit,
 ) {
+    // 测试期间屏幕常亮 (FLAG_KEEP_SCREEN_ON, 无需权限)
+    val view = androidx.compose.ui.platform.LocalView.current
+    DisposableEffect(Unit) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
     val percent = state.index * 100 / state.total
     Column(
         modifier = Modifier

@@ -65,6 +65,9 @@ class MemoryCopyWorkload(
     private val sizeBytes: Long = 64L * 1024 * 1024,
 ) : Workload {
 
+    // 带宽竞争/后台访问导致偶发抖动, 放宽到 5%
+    override val stableCvThresholdOverride: Double? = 0.05
+
     override val spec: BenchmarkSpec = BenchmarkSpec(
         workloadId = "mem.bandwidth.copy",
         workloadVersion = "0.1.0-alpha",

@@ -1,6 +1,6 @@
 {
   "scoreVersion": "SVS-1.0",
-  "referencePackVersion": "SV-REF-2026-08-A",
+  "referencePackVersion": "SV-REF-2026-08-B",
   "overallWeights": {
     "CPU": 0.3,
     "GPU": 0.35,
@@ -72,20 +72,20 @@
     }
   },
   "references": {
-    "cpu.int.ilp": 2730676039.43,
-    "cpu.fp32.fma": 10951340249.91,
-    "cpu.int.branch": 472594735.5,
-    "cpu.hash.cached": 912662375.8,
-    "cpu.multithread": 2162065236.08,
-    "vulkan.fp32.independent": 1439062079500.0,
-    "vulkan.fp32.dependency": 733605788000.0,
-    "vulkan.buffer.throughput": 46121784000.0,
-    "mem.bandwidth.read": 26171180532.22,
-    "mem.bandwidth.copy": 20857520610.95,
-    "storage.seq_write.buffered": 1188248179.25,
-    "storage.seq_write.durable": 585025076.29,
-    "storage.random_write.fsync": 55654647.73,
-    "storage.seq_read.warm": 6326675589.86
+    "cpu.int.ilp": 2579077385.12,
+    "cpu.fp32.fma": 10325801631.56,
+    "cpu.int.branch": 447364433.5,
+    "cpu.hash.cached": 860435492.75,
+    "cpu.multithread": 2085232962.17,
+    "vulkan.fp32.independent": 807316913000.0,
+    "vulkan.fp32.dependency": 730117327000.0,
+    "vulkan.buffer.throughput": 45384714000.0,
+    "mem.bandwidth.read": 24384857206.21,
+    "mem.bandwidth.copy": 20870751432.07,
+    "storage.seq_write.buffered": 1103831437.41,
+    "storage.seq_write.durable": 561498617.25,
+    "storage.random_write.fsync": 62961276.46,
+    "storage.seq_read.warm": 4980984054.39
   },
   "clampMin": 0.2,
   "clampMax": 5.0,

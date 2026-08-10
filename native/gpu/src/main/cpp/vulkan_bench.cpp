@@ -463,7 +463,7 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
     // GPU workload 宣告 (Android 16 ADPF: 提前告知 GPU 负载将显著增加)
     announceGpuLoad();
 
-    // ==== GPU PRIME (固定 8 轮 ~200ms, 不判平台/不算 plateau) ====
+    // ==== GPU PRIME (最长 16 轮, 每轮动态校准保持 ~200ms 持续负载) ====
     // probe: 1024 测时, 放大到 ~200ms/轮
     pcData.iterations = 1024;
     RoundTimings probe = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
@@ -475,11 +475,28 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
         if (boostIters > 100000000u) boostIters = 100000000u;
     }
     std::vector<uint64_t> primeNs;
-    for (int i = 0; i < 8; i++) {
-        pcData.iterations = boostIters;
+    std::vector<uint64_t> primeWin;
+    uint32_t primeIters = boostIters;
+    for (int i = 0; i < 16; i++) {
+        pcData.iterations = primeIters;
         RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-        if (t.submitToFenceNs > 0) primeNs.push_back(t.submitToFenceNs);
+        if (t.submitToFenceNs > 0) {
+            primeNs.push_back(t.submitToFenceNs);
+            primeWin.push_back(t.submitToFenceNs);
+            if (primeWin.size() > 3) primeWin.erase(primeWin.begin());
+            // 动态校准: 保持每轮 ~200ms 持续负载 (GPU 升频后轮长会缩短)
+            primeIters = (uint32_t)((double)primeIters * 200000000.0 / (double)t.submitToFenceNs);
+            if (primeIters < 1024) primeIters = 1024;
+            if (primeIters > 100000000u) primeIters = 100000000u;
+            if (i >= 5 && primeWin.size() == 3) {
+                // 时间 CV < 5% -> GPU 平台稳定 (升频完成), 提前进入校准
+                std::vector<double> dv;
+                for (auto v : primeWin) dv.push_back((double)v);
+                if (robustCv(dv) < 0.05) break;
+            }
+        }
     }
+    boostIters = primeIters;
     uint64_t primeMedianNs = primeNs.empty() ? 0 : medianU64(primeNs);
 
     // ==== CALIBRATION (逐级, host submit-to-fence; 每级放大 clamp 1.5~8x) ====
@@ -498,14 +515,37 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
         RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
         if (m.submitToFenceNs > 0) calibNs = m.submitToFenceNs;
     }
-    // L2: 中间轮 median -> ~targetMs
+    // L2: 3 轮 median -> ~targetMs (单轮校准会被 GPU 唤醒状态波动污染)
     if (calibNs > 0) {
         uint64_t target = (uint64_t)targetMs * 1000000ull;
         iters = (uint32_t)((double)iters * (double)target / (double)calibNs);
         if (iters < 1024) iters = 1024;
         if (iters > 100000000u) iters = 100000000u;
+        pcData.iterations = iters;
+        std::vector<uint64_t> l2ns;
+        for (int i = 0; i < 3; i++) {
+            RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+            if (m.submitToFenceNs > 0) l2ns.push_back(m.submitToFenceNs);
+        }
+        if (!l2ns.empty()) {
+            uint64_t l2med = medianU64(l2ns);
+            iters = (uint32_t)((double)iters * (double)target / (double)l2med);
+            if (iters < 1024) iters = 1024;
+            if (iters > 100000000u) iters = 100000000u;
+        }
     }
+    // 验证轮: 确认单轮 ~300ms, 偏差 >50% 再缩放一次 (防过度放大/缩小)
     pcData.iterations = iters;
+    RoundTimings verify = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+    if (verify.submitToFenceNs > 0) {
+        uint64_t target = (uint64_t)targetMs * 1000000ull;
+        if (verify.submitToFenceNs < target / 2 || verify.submitToFenceNs > target * 2) {
+            iters = (uint32_t)((double)iters * (double)target / (double)verify.submitToFenceNs);
+            if (iters < 1024) iters = 1024;
+            if (iters > 100000000u) iters = 100000000u;
+            pcData.iterations = iters;
+        }
+    }
     // LOGD("calib: L1Iters=%llu L1Ns=%llu finalIters=%u", (unsigned long long)calibItersL1, (unsigned long long)calibNs, iters);
 
     // ==== MEASURE (settle 1 轮 + 7 轮, transition/双峰检测自动重来) ====
@@ -552,13 +592,23 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
         // 重新 prime -> 重新校准 -> measure (最多 1 次重来)
         if (attempt == 0) {
             primeNs.clear();
-            for (int i = 0; i < 8; i++) {
+            primeWin.clear();
+            for (int i = 0; i < 16; i++) {
                 pcData.iterations = boostIters;
                 RoundTimings t = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
-                if (t.submitToFenceNs > 0) primeNs.push_back(t.submitToFenceNs);
+                if (t.submitToFenceNs > 0) {
+                    primeNs.push_back(t.submitToFenceNs);
+                    primeWin.push_back(t.submitToFenceNs);
+                    if (primeWin.size() > 3) primeWin.erase(primeWin.begin());
+                    if (i >= 5 && primeWin.size() == 3) {
+                        std::vector<double> dv;
+                        for (auto v : primeWin) dv.push_back((double)v);
+                        if (robustCv(dv) < 0.05) break;
+                    }
+                }
             }
             primeMedianNs = primeNs.empty() ? 0 : medianU64(primeNs);
-            // 逐级校准 (L1 + L2)
+            // 逐级校准 (L1 + L2 + 验证轮)
             iters = 1024;
             pcData.iterations = iters;
             RoundTimings c0 = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
@@ -577,8 +627,30 @@ static WorkResult runFp32(Harness& h, int targetMs, bool independent) {
                 iters = (uint32_t)((double)iters * (double)target / (double)calibNs);
                 if (iters < 1024) iters = 1024;
                 if (iters > 100000000u) iters = 100000000u;
+                pcData.iterations = iters;
+                std::vector<uint64_t> l2ns;
+                for (int i = 0; i < 3; i++) {
+                    RoundTimings m = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+                    if (m.submitToFenceNs > 0) l2ns.push_back(m.submitToFenceNs);
+                }
+                if (!l2ns.empty()) {
+                    uint64_t l2med = medianU64(l2ns);
+                    iters = (uint32_t)((double)iters * (double)target / (double)l2med);
+                    if (iters < 1024) iters = 1024;
+                    if (iters > 100000000u) iters = 100000000u;
+                }
             }
             pcData.iterations = iters;
+            RoundTimings verify = h.runRound(g.pipe, g.pl, g.ds, &pcData, sizeof(pcData), groups, g.queryPool, g.fence, useGpuTs);
+            if (verify.submitToFenceNs > 0) {
+                uint64_t target = (uint64_t)targetMs * 1000000ull;
+                if (verify.submitToFenceNs < target / 2 || verify.submitToFenceNs > target * 2) {
+                    iters = (uint32_t)((double)iters * (double)target / (double)verify.submitToFenceNs);
+                    if (iters < 1024) iters = 1024;
+                    if (iters > 100000000u) iters = 100000000u;
+                    pcData.iterations = iters;
+                }
+            }
         }
     }
     if (transitionOrBimodal) r.retestNeeded = true;

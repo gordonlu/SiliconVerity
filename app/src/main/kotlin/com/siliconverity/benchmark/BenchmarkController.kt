@@ -82,6 +82,26 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
     private var job: Job? = null
     private var sessionStartedAt: String = ""
 
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
+
+    private fun acquireScreenLock() {
+        runCatching {
+            val pm = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+            val wl = pm.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "sv:benchmark",
+            )
+            wl.setReferenceCounted(false)
+            wl.acquire(30 * 60 * 1000L)
+            wakeLock = wl
+        }
+    }
+
+    private fun releaseScreenLock() {
+        runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
+        wakeLock = null
+    }
+
     @Volatile
     private var phonePaused = false
 
@@ -145,6 +165,8 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
         job?.cancel()
         job = viewModelScope.launch(Dispatchers.Default) {
             try {
+                // 测试期间保持屏幕常亮 (跑分时无操作会触发自动锁屏 -> 暂停)
+                acquireScreenLock()
                 // 离开 Done: 结果页守卫据此 pop 回首页, 避免双 pop 弹空栈
                 _state.value = BenchmarkUiState.Idle
                 val sessionId = java.util.UUID.randomUUID().toString()
@@ -227,6 +249,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
                         var current: com.siliconverity.core.benchmark.RunManifest = manifest
                         for (attempt in 1..2) {
                             progressState(BenchmarkPhase.FINALIZING, null, null)
+                            (workload as? GpuVulkanWorkload)?.reset()
                             val retry = runCatching {
                                 engine.execute(workload, onPhase = { phase, sIdx, sCnt ->
                                     progressState(phase, sIdx, sCnt)
@@ -265,6 +288,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
             } catch (e: Exception) {
                 _state.value = BenchmarkUiState.Done(emptyList(), e.message)
             } finally {
+                releaseScreenLock()
                 BenchmarkRunCoordinator.release()
             }
         }
@@ -272,6 +296,7 @@ class BenchmarkController(application: Application) : AndroidViewModel(applicati
 
     fun stop() {
         job?.cancel()
+        releaseScreenLock()
         _state.value = BenchmarkUiState.Idle
     }
 

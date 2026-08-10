@@ -271,6 +271,9 @@ class StorageReadWorkload(
     sizeBytes: Long = 32 * 1024 * 1024,
 ) : StorageWorkload(dir, sizeBytes, "sv_storage_read.bin"), Workload {
 
+    // IO 调度/后台写入竞争, 放宽到 7%
+    override val stableCvThresholdOverride: Double? = 0.07
+
     override val spec: BenchmarkSpec = BenchmarkSpec(
         workloadId = "storage.seq_read.warm",
         workloadVersion = "0.1.0-alpha",
