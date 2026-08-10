@@ -1,6 +1,6 @@
 {
   "scoreVersion": "SVS-1.0",
-  "referencePackVersion": "SV-REF-2026-08-B",
+  "referencePackVersion": "SV-REF-2026-08-C",
   "overallWeights": {
     "CPU": 0.3,
     "GPU": 0.35,
@@ -77,9 +77,9 @@
     "cpu.int.branch": 447364433.5,
     "cpu.hash.cached": 860435492.75,
     "cpu.multithread": 2085232962.17,
-    "vulkan.fp32.independent": 807316913000.0,
-    "vulkan.fp32.dependency": 730117327000.0,
-    "vulkan.buffer.throughput": 45384714000.0,
+    "vulkan.fp32.independent": 1434030000000.0,
+    "vulkan.fp32.dependency": 1298280000000.0,
+    "vulkan.buffer.throughput": 47250000000.0,
     "mem.bandwidth.read": 24384857206.21,
     "mem.bandwidth.copy": 20870751432.07,
     "storage.seq_write.buffered": 1103831437.41,
